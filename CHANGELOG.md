@@ -1,5 +1,43 @@
 # Changelog — plg_content_fgautolightbox
 
+## 1.2.1
+**Critical fix (P1)**, reported by a ChatGPT code review:
+
+- **The "per-article grouping" feature never actually worked.** The
+  README and the 1.0.3 changelog entry claimed that on a category/blog
+  page, arrow navigation stays within the article you clicked in. In
+  reality, every image on the page got the exact same `rel` attribute
+  (just the static `gallery_group` setting value, identical for all
+  content), so the JS grouped ALL images from ALL articles on the page
+  into one single gallery — e.g. clicking image 2 of 3 in Article A
+  could show "2 / 7" instead of "2 / 3", mixing in images from Articles
+  B and C.
+- **Root cause:** `rel` was always set to the plain configured
+  `gallery_group` value with no per-content uniqueness added.
+- **Fix (PHP, server-rendered images):** each processed article/item now
+  gets a unique "instance key" appended to the `gallery_group` value —
+  preferably the content's own `id` property (works for `com_content`,
+  `com_contact`, `com_newsfeeds`, K2, Zoo, and most other components),
+  falling back to `spl_object_hash()` for any content type without an
+  `id`. Images within the *same* article still correctly share one
+  group; different articles on the same page now get different, isolated
+  groups.
+- **Fix (JS, dynamically added images):** since client-side code has no
+  access to a Joomla content ID, `MutationObserver`-detected images use
+  the closest ancestor element with its own `id` attribute as scoping
+  instead, with a safe fallback to the previous (unscoped) behavior if
+  no such ancestor is found.
+- Verified by first reproducing the exact reported bug with a direct
+  test (three articles on one simulated category page, confirmed all
+  three ended up sharing one identical `rel` value), then confirming the
+  fix resolves it. Additional edge cases verified: images within one
+  article/item still share a group, content without an `id` property
+  still gets correctly isolated (via the hash fallback), a custom
+  `gallery_group` setting is still respected as the base prefix, and the
+  falsy-but-valid `id = 0` case is handled correctly (not mistaken for
+  "no id"). Full regression pass across all prior points (A–E) confirms
+  nothing else was affected.
+
 ## 1.2.0
 Response to a Qwen AI code review:
 

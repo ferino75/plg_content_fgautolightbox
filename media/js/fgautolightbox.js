@@ -259,6 +259,24 @@
             return img.getAttribute("src") || "";
         }
 
+        // Rovnaký princíp ako na PHP strane (viď getInstanceKey()) - k základnej
+        // gallery_group hodnote pridá "soľ", aby sa galéria nezliala naprieč
+        // rôznymi kontajnermi obsahu na jednej stránke (napr. viacero
+        // dynamicky načítaných položiek v zozname). Keďže JS nemá prístup k
+        // Joomla ID článku, hľadá najbližšieho predka s vlastným "id"
+        // atribútom - ak nič nenájde, použije sa pôvodná (nezoskupená)
+        // hodnota ako záloha.
+        function scopedGalleryGroup(img) {
+            var el = img.parentElement;
+            while (el && el !== document.body) {
+                if (el.id) {
+                    return ALB_CONFIG.galleryGroup + ":" + el.id;
+                }
+                el = el.parentElement;
+            }
+            return ALB_CONFIG.galleryGroup;
+        }
+
         function wrapNewImage(img) {
             if (img.closest("a")) return; // je skutočne zabalený - hotovo
 
@@ -296,7 +314,7 @@
             var link = document.createElement("a");
             link.setAttribute("href", srcVal);
             link.setAttribute("class", ALB_CONFIG.linkClass ? "alb-link " + ALB_CONFIG.linkClass : "alb-link");
-            link.setAttribute("rel", ALB_CONFIG.galleryGroup);
+            link.setAttribute("rel", scopedGalleryGroup(img));
             if (title) link.setAttribute("title", title);
             if (rawAlt) link.setAttribute("data-alb-alt", rawAlt);
             img.setAttribute("data-alb-done", "1");

@@ -96,7 +96,13 @@ trait FgautolightboxLogic
             return true;
         }
 
-        $article->text = $this->wrapImages($article->text);
+        // Jedinečný "kľúč" tohto konkrétneho obsahu (článku/položky) - zabezpečí,
+        // že galéria (šípky navigácie) zoskupuje obrázky len v rámci TOHTO
+        // obsahu, nie naprieč celou stránkou (napr. zoznam viacerých článkov
+        // na kategórii). Viď getInstanceKey().
+        $instanceKey = $this->getInstanceKey($article);
+
+        $article->text = $this->wrapImages($article->text, $instanceKey);
 
         if (!self::$assetsLoaded) {
             $linkClass    = $this->params->get('link_class', 'autolightbox');
@@ -169,6 +175,26 @@ trait FgautolightboxLogic
         $fullPath = JPATH_ROOT . '/media/plg_content_fgautolightbox/' . ltrim($relativePath, '/');
         $mtime = @filemtime($fullPath);
         return $mtime !== false ? $mtime : '1';
+    }
+
+    /**
+     * Vráti reťazec jedinečne identifikujúci tento konkrétny spracovávaný
+     * obsah (článok/kontakt/položka), použitý ako "sůl" pridaná ku
+     * gallery_group nastaveniu - zabezpečí, že sa galéria (rel atribút)
+     * nezlúči naprieč viacerými rôznymi článkami na tej istej stránke
+     * (napr. zoznam v kategórii).
+     *
+     * Preferuje $article->id (existuje pri com_content, com_contact,
+     * com_newsfeeds, K2, Zoo aj väčšine ďalších komponentov), so
+     * spl_object_hash() ako univerzálnou zálohou pre prípad, že by daný
+     * typ obsahu vlastnosť "id" nemal.
+     */
+    private function getInstanceKey($article)
+    {
+        if (isset($article->id) && $article->id !== '' && $article->id !== null) {
+            return (string) $article->id;
+        }
+        return spl_object_hash($article);
     }
 
     private function getExcludeClasses()
@@ -368,10 +394,10 @@ trait FgautolightboxLogic
         return array_map('strtolower', array_map('trim', explode(',', $allowedRaw)));
     }
 
-    private function wrapImages($html)
+    private function wrapImages($html, $instanceKey = '')
     {
         if (!class_exists('DOMDocument')) {
-            return $this->wrapImagesRegexFallback($html);
+            return $this->wrapImagesRegexFallback($html, $instanceKey);
         }
 
         $excludeClasses = $this->getExcludeClasses();
@@ -379,6 +405,9 @@ trait FgautolightboxLogic
         $showCaption  = $this->params->get('show_caption', 'alt');
         $linkClass    = $this->params->get('link_class', 'autolightbox');
         $galleryGroup = $this->params->get('gallery_group', 'autolightbox-gallery');
+        if ($instanceKey !== '') {
+            $galleryGroup .= ':' . $instanceKey;
+        }
 
         $dom = new DOMDocument('1.0', 'UTF-8');
         libxml_use_internal_errors(true);
@@ -487,7 +516,7 @@ trait FgautolightboxLogic
      * lightbox odkaz len na základe VLASTNÉHO srcset/src atribútu <img>,
      * bez zohľadnenia rozlíšení zo sesterských <source> elementov.
      */
-    private function wrapImagesRegexFallback($html)
+    private function wrapImagesRegexFallback($html, $instanceKey = '')
     {
         $existingLinks = array();
         $html = preg_replace_callback(
@@ -505,6 +534,9 @@ trait FgautolightboxLogic
         $showCaption  = $this->params->get('show_caption', 'alt');
         $linkClass    = $this->params->get('link_class', 'autolightbox');
         $galleryGroup = $this->params->get('gallery_group', 'autolightbox-gallery');
+        if ($instanceKey !== '') {
+            $galleryGroup .= ':' . $instanceKey;
+        }
 
         $html = preg_replace_callback(
             '/<img(\s[^>]*)>/iU',
