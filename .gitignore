@@ -1,0 +1,16 @@
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Build/packaging artifacts
+*.zip
+/dist/
+
+# Local test scratch
+/test/
