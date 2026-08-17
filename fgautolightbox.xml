@@ -2,7 +2,7 @@
 <extension version="3.0" type="plugin" group="content" method="upgrade">
     <name>PLG_CONTENT_FGAUTOLIGHTBOX</name>
     <author>FG</author>
-    <version>1.3.1</version>
+    <version>1.3.2</version>
     <description>PLG_CONTENT_FGAUTOLIGHTBOX_XML_DESCRIPTION</description>
     <files>
         <filename plugin="fgautolightbox">fgautolightbox.php</filename>

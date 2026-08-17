@@ -1,5 +1,21 @@
 # Changelog — plg_content_fgautolightbox
 
+## 1.3.2
+Response to a ChatGPT code review observation (documentation accuracy,
+no code changes in this release):
+
+- **Corrected a historically inaccurate changelog claim.** The 1.0.3
+  entry below claimed per-article gallery grouping was working as of
+  that version. It wasn't — that only became true with the 1.2.1 fix,
+  roughly a dozen releases later. Added a retroactive correction note
+  directly under the 1.0.3 entry rather than rewriting it, so the
+  changelog remains an honest record of what was believed true at each
+  point in time, while still being accurate for anyone reading it today.
+- No functional changes. `fgautolightbox.php`, the JS/CSS engine, and
+  the language files are unchanged from 1.3.1 - the per-article
+  grouping described in the README is accurate as of 1.2.1 onward
+  (re-verified again while investigating this).
+
 ## 1.3.1
 Response to a ChatGPT code review suggestion (P3, new feature):
 
@@ -580,6 +596,16 @@ Response to a Grok AI code review:
   (the `gallery_group` value) — on a page with multiple articles (e.g. a
   category listing), clicking an image now only navigates among images
   from the same article, not across the whole page.
+- **Retroactive correction (added when documenting 1.2.1):** the
+  per-article grouping claim above did not actually hold in this or any
+  subsequent version through 1.2.0. `rel` was set to the plain
+  `gallery_group` value with no per-article uniqueness added, so every
+  article on a page ended up sharing one single gallery in practice —
+  the exact opposite of what this entry describes. This was only
+  actually fixed in **1.2.1**, which is the first version where this
+  claim is true. Left as originally written rather than rewritten, so
+  the changelog stays an accurate historical record; see 1.2.1 below for
+  what actually changed and how it was verified.
 
 ## 1.0.2
 - Change: HTML is no longer parsed with regex, but with `DOMDocument` +
