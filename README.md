@@ -1,4 +1,4 @@
-# Content - FG AutoLightbox
+# FG AutoLightbox plugin for Joomla
 
 <p align="center">
   <img src="assets/logo.png" alt="FG AutoLightbox" width="128">
