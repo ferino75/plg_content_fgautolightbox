@@ -1,5 +1,31 @@
 # Changelog — plg_content_fgautolightbox
 
+## 1.2.2
+Response to a ChatGPT code review (P2, global PHP state hygiene):
+
+- **`libxml_use_internal_errors(true)` global state was never restored.**
+  The previous code enabled internal libxml error handling before
+  `DOMDocument::loadHTML()` and cleared the accumulated errors afterward,
+  but never restored the *previous* setting — silently leaving this
+  global PHP setting changed for the rest of the request, which could
+  affect other code/plugins running in the same request that rely on
+  the default (visible) libxml error behavior.
+- Fixed with the standard save/try/finally pattern: the previous state
+  is captured via `libxml_use_internal_errors(true)`'s own return value,
+  and restored in a `finally` block so it happens even if `loadHTML()`
+  or anything around it were to throw.
+- **Bonus fix found while touching this code**: if `DOMDocument::loadHTML()`
+  failed and the plugin fell back to the regex-based parser, the
+  per-article `$instanceKey` (the 1.2.1 grouping fix) was silently
+  dropped — falling back to the old ungrouped `rel` behavior in that
+  rare scenario. Now correctly passed through.
+- Verified with automated tests: the libxml global setting is correctly
+  restored to its prior value in both directions (was `true` before the
+  call, was `false` before the call), and the regex-fallback path now
+  correctly includes the instance key in its output. Full regression
+  pass across all prior points (A–E, plus the 1.2.1 grouping fix)
+  confirms no other impact.
+
 ## 1.2.1
 **Critical fix (P1)**, reported by a ChatGPT code review:
 

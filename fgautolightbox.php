@@ -410,19 +410,29 @@ trait FgautolightboxLogic
         }
 
         $dom = new DOMDocument('1.0', 'UTF-8');
-        libxml_use_internal_errors(true);
 
-        // Poznámka: skúšal som modernejší zápis bez plného <html><body> obalu
-        // (LIBXML_HTML_NOIMPLIED), ale pri viacerých susediacich <p> elementoch
-        // (bežná štruktúra Joomla článku) poškodzoval HTML štruktúru - zlial
-        // prvé dva <p> do seba a pridal nadbytočnú </p> na koniec. Tento
-        // plnohodnotný obal je overene bezpečný pre reálny obsah článkov.
-        $wrapped = '<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html><html><head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"></head><body>' . $html . '</body></html>';
-        $loaded = $dom->loadHTML($wrapped, LIBXML_NOERROR | LIBXML_NOWARNING);
-        libxml_clear_errors();
+        // Ulož predchádzajúci stav libxml error handlingu a po skončení ho
+        // korektne obnov (nie len vyčisti chyby) - inak by sme natrvalo
+        // zmenili globálny PHP stav pre zvyšok requestu, čo by mohlo
+        // ovplyvniť iné pluginy/kód bežiaci v tom istom requeste, ktorý sa
+        // spolieha na predvolené (viditeľné) libxml chybové hlásenia.
+        $previousLibxmlState = libxml_use_internal_errors(true);
+
+        try {
+            // Poznámka: skúšal som modernejší zápis bez plného <html><body> obalu
+            // (LIBXML_HTML_NOIMPLIED), ale pri viacerých susediacich <p> elementoch
+            // (bežná štruktúra Joomla článku) poškodzoval HTML štruktúru - zlial
+            // prvé dva <p> do seba a pridal nadbytočnú </p> na koniec. Tento
+            // plnohodnotný obal je overene bezpečný pre reálny obsah článkov.
+            $wrapped = '<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html><html><head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"></head><body>' . $html . '</body></html>';
+            $loaded = $dom->loadHTML($wrapped, LIBXML_NOERROR | LIBXML_NOWARNING);
+        } finally {
+            libxml_clear_errors();
+            libxml_use_internal_errors($previousLibxmlState);
+        }
 
         if (!$loaded) {
-            return $this->wrapImagesRegexFallback($html);
+            return $this->wrapImagesRegexFallback($html, $instanceKey);
         }
 
         $xpath = new DOMXPath($dom);
