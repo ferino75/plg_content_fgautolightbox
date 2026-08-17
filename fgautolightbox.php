@@ -118,12 +118,19 @@ trait FgautolightboxLogic
                 'showCaption'       => $showCaption,
                 'captionMobile'     => (bool) (int) $this->params->get('caption_mobile', 0),
                 'watchDynamic'      => (bool) (int) $this->params->get('watch_dynamic', 1),
+                'showNavigation'    => (bool) (int) $this->params->get('show_navigation', 1),
                 'watchContainer'    => trim($this->params->get('watch_container', '')),
                 'allowedExtensions' => $this->getAllowedExtensionsList(),
             );
 
             $doc = Factory::getDocument();
-            $doc->addScriptDeclaration('window.FG_AUTOLIGHTBOX_CONFIG = ' . json_encode($config) . ';');
+            // JSON_HEX_* flagy sú obranná vrstva navyše (config prichádza z
+            // administrácie, ktorú upravuje dôveryhodný administrátor, nie z
+            // nedôveryhodného vstupu) - zabránia tomu, aby hodnota z nastavení
+            // (napr. exclude_urls, exclude_classes) mohla vytvoriť sekvenciu
+            // ako </script> alebo iný znak nebezpečný v <script> kontexte.
+            $configJson = json_encode($config, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
+            $doc->addScriptDeclaration('window.FG_AUTOLIGHTBOX_CONFIG = ' . $configJson . ';');
 
             $mediaBase = $this->getMediaBaseUri();
             $doc->addStyleSheet($mediaBase . '/css/fgautolightbox.css?v=' . $this->getAssetCacheBuster('css/fgautolightbox.css'));

@@ -79,6 +79,7 @@ All settings are optional; the defaults are sensible for a typical site.
 | Allowed file extensions | `jpg,jpeg,png,gif,webp,avif` | Only these get a lightbox. SVG is excluded by default since it can carry embedded scripts |
 | Watch for dynamically added images | Yes | Enables the `MutationObserver`; disable on pages with a very busy DOM |
 | Watch container (CSS selector) | *(empty)* | Scope the `MutationObserver` to matching container(s) (e.g. `.item-page, .blog`) instead of the whole page, for better performance. Falls back to the whole page if the selector matches nothing |
+| Enable gallery navigation | Yes | Disable for a single-image viewer — no prev/next arrows, counter, or keyboard/swipe navigation between images |
 
 ## Theming
 

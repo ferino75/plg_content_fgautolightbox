@@ -2,7 +2,7 @@
 <extension version="3.0" type="plugin" group="content" method="upgrade">
     <name>PLG_CONTENT_FGAUTOLIGHTBOX</name>
     <author>FG</author>
-    <version>1.2.2</version>
+    <version>1.3.0</version>
     <description>PLG_CONTENT_FGAUTOLIGHTBOX_XML_DESCRIPTION</description>
     <files>
         <filename plugin="fgautolightbox">fgautolightbox.php</filename>
@@ -91,6 +91,15 @@
                     label="PLG_CONTENT_FGAUTOLIGHTBOX_FIELD_ALLOWED_EXTENSIONS_LABEL"
                     description="PLG_CONTENT_FGAUTOLIGHTBOX_FIELD_ALLOWED_EXTENSIONS_DESC"
                 />
+                <field
+                    name="show_navigation"
+                    type="list"
+                    default="1"
+                    label="PLG_CONTENT_FGAUTOLIGHTBOX_FIELD_SHOW_NAVIGATION_LABEL"
+                    description="PLG_CONTENT_FGAUTOLIGHTBOX_FIELD_SHOW_NAVIGATION_DESC">
+                    <option value="1">PLG_CONTENT_FGAUTOLIGHTBOX_FIELD_SHOW_NAVIGATION_OPT_YES</option>
+                    <option value="0">PLG_CONTENT_FGAUTOLIGHTBOX_FIELD_SHOW_NAVIGATION_OPT_NO</option>
+                </field>
                 <field
                     name="watch_dynamic"
                     type="list"

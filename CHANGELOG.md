@@ -1,5 +1,43 @@
 # Changelog — plg_content_fgautolightbox
 
+## 1.3.0
+Response to a ChatGPT code review suggestion (P3, new feature):
+
+- **New "Enable gallery navigation" parameter** (enabled by default,
+  matching all prior behavior). When disabled, the lightbox acts as a
+  single-image viewer: each image opens on its own, with no prev/next
+  arrows, no `X / Y` counter, and no way to navigate to other images via
+  keyboard (`←`/`→`) or swipe - useful for sites that want a plain
+  "click to zoom" experience without implying a gallery exists.
+- Escape (close) and Tab (focus trap) continue to work normally
+  regardless of this setting - only navigation *between* images is
+  affected.
+- Verified with automated tests: with navigation enabled, arrows/counter
+  are visible and keyboard navigation works exactly as before; with it
+  disabled, arrows/counter are hidden and `ArrowRight` no longer changes
+  the displayed image. Full regression pass across all prior points
+  confirms no other impact.
+
+## 1.2.3
+Response to a ChatGPT code review (P2, defense-in-depth hardening):
+
+- **`json_encode()` for the inline `<script>` config block now uses
+  `JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT`.**
+  Without these flags, a configuration value (e.g. `exclude_urls`,
+  `exclude_classes`, `watch_container`) could in principle contain a
+  sequence like `</script>` that would end the script block early when
+  embedded raw. This isn't a realistic vulnerability today - the plugin
+  configuration is only editable by trusted Joomla administrators, not
+  by untrusted input - but it's a reasonable extra defensive layer with
+  no downside.
+- Verified with automated tests: the hardened JSON still round-trips to
+  byte-identical data after decoding, dangerous characters (`<`, `>`,
+  etc.) no longer appear raw in the output, and — most importantly — the
+  JS engine correctly receives the original, unescaped value when the
+  script is actually parsed (simulated via Node's `eval`, matching what
+  a browser's `<script>` tag parser would do). Full regression pass
+  across all prior points confirms no other impact.
+
 ## 1.2.2
 Response to a ChatGPT code review (P2, global PHP state hygiene):
 

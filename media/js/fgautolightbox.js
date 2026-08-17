@@ -18,6 +18,7 @@
         captionMobile: false,
         watchDynamic: true,
         watchContainer: "",
+        showNavigation: true,
         allowedExtensions: ["jpg", "jpeg", "png", "gif", "webp", "avif"]
     };
 
@@ -102,7 +103,10 @@
             capEl.textContent = items[current].title;
             capEl.style.display = hasCaption ? "" : "none";
 
-            var hasMultiple = items.length > 1;
+            // showNavigation=false -> lightbox funguje ako jednoduchý prehliadač
+            // jedného obrázka (žiadne šípky, počítadlo, klávesnica ani swipe
+            // medzi obrázkami - viď aj keydown a touchend nižšie).
+            var hasMultiple = items.length > 1 && ALB_CONFIG.showNavigation;
             prevBtn.style.display = hasMultiple ? "" : "none";
             nextBtn.style.display = hasMultiple ? "" : "none";
             cntEl.textContent = hasMultiple ? (current + 1) + " / " + items.length : "";
@@ -141,8 +145,10 @@
         document.addEventListener("keydown", function(e) {
             if (!ovEl.classList.contains("alb-open")) return;
             if (e.key === "Escape") { close(); return; }
-            if (e.key === "ArrowLeft") { prev(); return; }
-            if (e.key === "ArrowRight") { next(); return; }
+            if (ALB_CONFIG.showNavigation) {
+                if (e.key === "ArrowLeft") { prev(); return; }
+                if (e.key === "ArrowRight") { next(); return; }
+            }
             if (e.key === "Tab") {
                 // Jednoduchá "focus trap" - Tab neopustí overlay, kým je otvorený
                 var focusable = [closeBtn, prevBtn, nextBtn].filter(function(el) {
@@ -171,6 +177,7 @@
         }, { passive: false });
         ovEl.addEventListener("touchend", function(e) {
             if (!sa) return; sa = false;
+            if (!ALB_CONFIG.showNavigation) return;
             var t = e.changedTouches[0], dx = t.clientX - sx, dy = t.clientY - sy;
             if (Math.abs(dy) > Math.abs(dx) || Math.abs(dx) < 50) return;
             if (items.length > 1) { if (dx < 0) next(); else prev(); }
