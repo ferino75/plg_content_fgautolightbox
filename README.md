@@ -1,8 +1,8 @@
-# FG AutoLightbox plugin for Joomla
-
 <p align="center">
   <img src="assets/logo.png" alt="FG AutoLightbox" width="128">
 </p>
+
+# FG AutoLightbox plugin for Joomla
 
 <p align="center">
   <img src="https://img.shields.io/badge/version-1.1.0-blue.svg" alt="Version">
