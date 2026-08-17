@@ -1,14 +1,15 @@
-# Content - FG AutoLightbox
-
 <p align="center">
   <img src="assets/logo.png" alt="FG AutoLightbox" width="128">
 </p>
+
+# FG AutoLightbox plugin for Joomla
 
 <p align="center">
   <img src="https://img.shields.io/badge/version-1.1.0-blue.svg" alt="Version">
   <img src="https://img.shields.io/badge/Joomla-3.10%20%7C%204%20%7C%205%20%7C%206-5091CD.svg" alt="Joomla">
   <img src="https://img.shields.io/badge/PHP-7.4%2B-777BB4.svg" alt="PHP">
   <img src="https://img.shields.io/badge/license-GPL--2.0-green.svg" alt="License">
+  <img src="https://img.shields.io/github/downloads/ferino75/plg_content_fgautolightbox/total?color=FF6B4A" alt="Downloads">
 </p>
 
 A Joomla content plugin that automatically turns every image in your
@@ -37,8 +38,16 @@ gap: editors change nothing, administrators install one plugin.
 - Per-article grouping — on a category page, arrows navigate only within
   the article you clicked in
 - Handles images added after page load (AJAX, infinite scroll) via
-  `MutationObserver`
+  `MutationObserver` — with an optional CSS selector to scope watching
+  to just the content area, for better performance on very dynamic pages
 - Lazy-load aware — prefers `data-src` over `src` when present
+- **Responsive images done right** — picks the best available resolution
+  in order: `data-full`/`data-highres` (explicit override) → `data-src` →
+  the largest candidate in `srcset` → plain `src`. Works with `<picture>`
+  elements too (scans every `<source>`), without breaking the browser's
+  native responsive/format switching for the page's normal display
+- Extensible beyond the built-in components (`com_content`, `com_contact`,
+  `com_newsfeeds`) — add K2, Zoo, or any custom component via a setting
 - Accessible: `role="dialog"`, `aria-modal`, real `<button>` controls with
   `aria-label`, focus trap, and screen-reader alt text that stays present
   even when visible captions are turned off
@@ -65,9 +74,11 @@ All settings are optional; the defaults are sensible for a typical site.
 | Caption under image | Alt text | Alt text / file name / none |
 | Show caption on mobile too | No | Captions are hidden on small screens by default so the image gets maximum space |
 | Exclude components | *(empty)* | Comma-separated component names to skip (e.g. `com_contact`) |
+| Extra allowed contexts | *(empty)* | Comma-separated contexts to process beyond the built-in ones — exact (`com_k2.item`) or a whole component via wildcard (`com_k2.*` or just `com_k2`); useful for K2, Zoo, custom components |
 | Exclude pages/URLs | *(empty)* | Comma-separated substrings matched against the page URL |
 | Allowed file extensions | `jpg,jpeg,png,gif,webp,avif` | Only these get a lightbox. SVG is excluded by default since it can carry embedded scripts |
 | Watch for dynamically added images | Yes | Enables the `MutationObserver`; disable on pages with a very busy DOM |
+| Watch container (CSS selector) | *(empty)* | Scope the `MutationObserver` to matching container(s) (e.g. `.item-page, .blog`) instead of the whole page, for better performance. Falls back to the whole page if the selector matches nothing |
 
 ## Theming
 

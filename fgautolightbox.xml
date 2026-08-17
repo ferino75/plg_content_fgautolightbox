@@ -2,7 +2,7 @@
 <extension version="3.0" type="plugin" group="content" method="upgrade">
     <name>PLG_CONTENT_FGAUTOLIGHTBOX</name>
     <author>FG</author>
-    <version>1.1.0</version>
+    <version>1.2.0</version>
     <description>PLG_CONTENT_FGAUTOLIGHTBOX_XML_DESCRIPTION</description>
     <files>
         <filename plugin="fgautolightbox">fgautolightbox.php</filename>
@@ -64,6 +64,13 @@
                     <option value="1">PLG_CONTENT_FGAUTOLIGHTBOX_FIELD_CAPTION_MOBILE_OPT_YES</option>
                 </field>
                 <field
+                    name="extra_contexts"
+                    type="text"
+                    default=""
+                    label="PLG_CONTENT_FGAUTOLIGHTBOX_FIELD_EXTRA_CONTEXTS_LABEL"
+                    description="PLG_CONTENT_FGAUTOLIGHTBOX_FIELD_EXTRA_CONTEXTS_DESC"
+                />
+                <field
                     name="exclude_components"
                     type="text"
                     default=""
@@ -93,6 +100,13 @@
                     <option value="1">PLG_CONTENT_FGAUTOLIGHTBOX_FIELD_WATCH_DYNAMIC_OPT_YES</option>
                     <option value="0">PLG_CONTENT_FGAUTOLIGHTBOX_FIELD_WATCH_DYNAMIC_OPT_NO</option>
                 </field>
+                <field
+                    name="watch_container"
+                    type="text"
+                    default=""
+                    label="PLG_CONTENT_FGAUTOLIGHTBOX_FIELD_WATCH_CONTAINER_LABEL"
+                    description="PLG_CONTENT_FGAUTOLIGHTBOX_FIELD_WATCH_CONTAINER_DESC"
+                />
             </fieldset>
         </fields>
     </config>

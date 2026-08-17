@@ -17,6 +17,7 @@
         showCaption: "alt",
         captionMobile: false,
         watchDynamic: true,
+        watchContainer: "",
         allowedExtensions: ["jpg", "jpeg", "png", "gif", "webp", "avif"]
     };
 
@@ -199,6 +200,65 @@
         // sa objaví v DOM raz) je toto správanie presne to, čo treba.
         var processedImages = (typeof WeakSet !== "undefined") ? new WeakSet() : null;
 
+        // Z hodnoty atribútu srcset vyberie URL s najväčším rozlíšením ("w"
+        // alebo "x" deskriptor). Rovnaká logika ako PHP parseLargestFromSrcset().
+        function parseLargestFromSrcset(srcset) {
+            var candidates = srcset.split(",").map(function(s) { return s.trim(); });
+            var best = "", bestScore = -1, first = "";
+            candidates.forEach(function(candidate) {
+                if (!candidate) return;
+                var parts = candidate.split(/\s+/);
+                var url = parts[0];
+                if (!first) first = url;
+                var score = 0;
+                if (parts[1]) {
+                    var m = parts[1].match(/^([\d.]+)([wx])$/i);
+                    if (m) score = parseFloat(m[1]);
+                }
+                if (score > bestScore) { bestScore = score; best = url; }
+            });
+            return best || first;
+        }
+
+        // Vyber najlepšiu dostupnú URL: data-full/data-highres > data-src >
+        // najväčšie rozlíšenie zo srcset > src. Rovnaká priorita ako PHP
+        // pickBestSrc(), aby dynamicky pridané obrázky (AJAX) dostali
+        // identické správanie ako tie spracované serverom.
+        // Ak je <img> vnútri <picture>, zloží kombinovaný srcset zo samotného
+        // <img> aj zo VŠETKÝCH <source> elementov v tom istom <picture> - na
+        // rozdiel od PHP DOMDocument tu žiadny problém s vnorením nehrozí,
+        // keďže ide o skutočný živý DOM prehliadača.
+        function getCombinedSrcset(img) {
+            var parts = [];
+            var ownSrcset = img.getAttribute("srcset");
+            if (ownSrcset) parts.push(ownSrcset);
+
+            var picture = img.closest("picture");
+            if (picture) {
+                picture.querySelectorAll("source").forEach(function(source) {
+                    var s = source.getAttribute("srcset");
+                    if (s) parts.push(s);
+                });
+            }
+            return parts.join(", ");
+        }
+
+        function pickBestSrc(img) {
+            var dataFull = img.getAttribute("data-full") || img.getAttribute("data-highres");
+            if (dataFull) return dataFull;
+
+            var dataSrc = img.getAttribute("data-src");
+            if (dataSrc) return dataSrc;
+
+            var srcset = getCombinedSrcset(img);
+            if (srcset) {
+                var fromSrcset = parseLargestFromSrcset(srcset);
+                if (fromSrcset) return fromSrcset;
+            }
+
+            return img.getAttribute("src") || "";
+        }
+
         function wrapNewImage(img) {
             if (img.closest("a")) return; // je skutočne zabalený - hotovo
 
@@ -215,8 +275,7 @@
                 if (imgClasses.indexOf(ALB_CONFIG.excludeClasses[i]) !== -1) return;
             }
 
-            // Preferuj data-src (bežná konvencia lazy-load knižníc) pred src
-            var srcVal = img.getAttribute("data-src") || img.getAttribute("src");
+            var srcVal = pickBestSrc(img);
             if (!srcVal) return;
             if (!hasAllowedExtension(srcVal)) return;
 
@@ -243,8 +302,14 @@
             img.setAttribute("data-alb-done", "1");
             if (processedImages) processedImages.add(img);
 
-            img.parentNode.insertBefore(link, img);
-            link.appendChild(img);
+            // Ak je obrázok vnútri <picture>, obaľ CELÝ <picture> element,
+            // nie len <img> - inak by <img> prestal byť priamym potomkom
+            // <picture> a natívne prepínanie <source> podľa HTML špecifikácie
+            // by prestalo fungovať pre bežné (nie lightbox) zobrazenie.
+            var wrapTarget = img.closest("picture") || img;
+
+            wrapTarget.parentNode.insertBefore(link, wrapTarget);
+            link.appendChild(wrapTarget);
         }
 
         function scanForNewImages(node) {
@@ -270,7 +335,28 @@
                     }
                 }
             });
-            albObserver.observe(document.body, { childList: true, subtree: true });
+
+            // Ak je nastavený CSS selektor kontajnera, sleduj len jeho výskyty
+            // (výkonovo lacnejšie na stránkach s "živým" DOM mimo obsahu
+            // článku - animácie, chat widgety a pod.). Ak selektor nič
+            // nenájde (napr. preklep v nastavení), použije sa document.body,
+            // aby sledovanie dynamických obrázkov nezostalo potichu vypnuté.
+            var containers = [];
+            if (ALB_CONFIG.watchContainer) {
+                try {
+                    containers = Array.prototype.slice.call(
+                        document.querySelectorAll(ALB_CONFIG.watchContainer)
+                    );
+                } catch (e) {
+                    containers = []; // neplatný selektor - použije sa fallback nižšie
+                }
+            }
+            if (!containers.length) {
+                containers = [document.body];
+            }
+            containers.forEach(function(container) {
+                albObserver.observe(container, { childList: true, subtree: true });
+            });
         }
     }
 

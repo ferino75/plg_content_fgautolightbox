@@ -41,7 +41,30 @@ trait FgautolightboxLogic
             'com_content.article', 'com_content.featured', 'com_content.category',
             'com_contact.contact', 'com_newsfeeds.newsfeed',
         );
-        if (!in_array($context, $allowedContexts)) {
+
+        // Rozšírenie zoznamu o vlastné kontexty z nastavení (napr. K2, Zoo,
+        // vlastné komponenty). Podporuje presný kontext ("com_k2.item") aj
+        // celý komponent naraz ("com_k2" alebo "com_k2.*").
+        $extraContextsRaw = trim($this->params->get('extra_contexts', ''));
+        $extraComponents = array();
+        if (!empty($extraContextsRaw)) {
+            foreach (explode(',', $extraContextsRaw) as $entry) {
+                $entry = trim($entry);
+                if ($entry === '') {
+                    continue;
+                }
+                if (substr($entry, -2) === '.*') {
+                    $extraComponents[] = substr($entry, 0, -2);
+                } elseif (strpos($entry, '.') === false) {
+                    $extraComponents[] = $entry; // len nazov komponentu = cely wildcard
+                } else {
+                    $allowedContexts[] = $entry; // presny kontext
+                }
+            }
+        }
+
+        $isAllowed = in_array($context, $allowedContexts) || in_array($component, $extraComponents);
+        if (!$isAllowed) {
             return true;
         }
 
@@ -89,6 +112,7 @@ trait FgautolightboxLogic
                 'showCaption'       => $showCaption,
                 'captionMobile'     => (bool) (int) $this->params->get('caption_mobile', 0),
                 'watchDynamic'      => (bool) (int) $this->params->get('watch_dynamic', 1),
+                'watchContainer'    => trim($this->params->get('watch_container', '')),
                 'allowedExtensions' => $this->getAllowedExtensionsList(),
             );
 
@@ -193,6 +217,128 @@ trait FgautolightboxLogic
         return 'alb-link';
     }
 
+    /**
+     * Vyberie najlepšiu dostupnú URL obrázka z jeho atribútov, v poradí:
+     * 1. data-full / data-highres - explicitná autorská voľba plnohodnotného obrázka
+     * 2. data-src - bežná lazy-load konvencia (placeholder v src, skutočný obrázok tu)
+     * 3. najväčšie rozlíšenie zo srcset (napr. responzívne šablóny)
+     * 4. src - posledná záloha
+     *
+     * $attrs je asociatívne pole atribútov (case-insensitive kľúče už z volajúceho).
+     */
+    private function pickBestSrc($attrs)
+    {
+        foreach (array('data-full', 'data-highres') as $key) {
+            if (!empty($attrs[$key])) {
+                return $attrs[$key];
+            }
+        }
+        if (!empty($attrs['data-src'])) {
+            return $attrs['data-src'];
+        }
+        if (!empty($attrs['srcset'])) {
+            $fromSrcset = $this->parseLargestFromSrcset($attrs['srcset']);
+            if ($fromSrcset !== '') {
+                return $fromSrcset;
+            }
+        }
+        return !empty($attrs['src']) ? $attrs['src'] : '';
+    }
+
+    /**
+     * Ak je <img> zabalený v <picture>, zloží jeden kombinovaný srcset reťazec
+     * zo srcset atribútu samotného <img> a zo srcset atribútov všetkých
+     * sesterských <source> elementov - parseLargestFromSrcset() potom z tejto
+     * spoločnej množiny vyberie kandidáta s najväčším rozlíšením naprieč
+     * všetkými <source> (nielen tým, ktorý by si aktuálne zvolil prehliadač
+     * podľa media query, keďže pre lightbox chceme vždy tú najkvalitnejšiu
+     * dostupnú verziu bez ohľadu na aktuálnu šírku obrazovky).
+     */
+    /**
+     * Nájde najbližšieho predka <picture> (nie nutne priameho rodiča - viď
+     * poznámka v getCombinedSrcset() o tom, prečo DOMDocument/libxml niekedy
+     * vnorí <img> hlbšie, než by človek čakal). Vráti null, ak obrázok nie
+     * je v žiadnom <picture>.
+     */
+    private function findPictureAncestor($img)
+    {
+        $ancestor = $img->parentNode;
+        while ($ancestor !== null) {
+            if ($ancestor->nodeType === XML_ELEMENT_NODE && strtolower($ancestor->nodeName) === 'picture') {
+                return $ancestor;
+            }
+            $ancestor = $ancestor->parentNode;
+        }
+        return null;
+    }
+
+    private function getCombinedSrcset($img)
+    {
+        $parts = array();
+
+        $ownSrcset = $img->getAttribute('srcset');
+        if ($ownSrcset !== '') {
+            $parts[] = $ownSrcset;
+        }
+
+        // Hľadaj najbližšieho predka <picture> - nie nutne priameho rodiča.
+        // DOMDocument/libxml totiž <source> nespracúva ako "prázdny" (void)
+        // element, takže <img> za ním sa mu často vnorí DOVNÚTRA <source>,
+        // nie vedľa neho ako sused (<picture><source><img></source></picture>
+        // namiesto očakávaného <picture><source><img></picture>). Preto
+        // stúpame nahor, kým nenájdeme <picture>, a potom v ňom vyhľadáme
+        // VŠETKY <source> potomky (getElementsByTagName ide do hĺbky), nie
+        // len priamych súrodencov.
+        $picture = $this->findPictureAncestor($img);
+
+        if ($picture !== null) {
+            foreach ($picture->getElementsByTagName('source') as $source) {
+                $sourceSrcset = $source->getAttribute('srcset');
+                if ($sourceSrcset !== '') {
+                    $parts[] = $sourceSrcset;
+                }
+            }
+        }
+
+        return implode(', ', $parts);
+    }
+
+    /**
+     * Z hodnoty atribútu srcset vyberie URL s najväčším rozlíšením (podľa "w"
+     * alebo "x" deskriptora). Pri chýbajúcom/nejednoznačnom deskriptore sa
+     * použije prvá položka ako záloha.
+     */
+    private function parseLargestFromSrcset($srcset)
+    {
+        $candidates = array_map('trim', explode(',', $srcset));
+        $best = '';
+        $bestScore = -1;
+        $first = '';
+
+        foreach ($candidates as $candidate) {
+            if ($candidate === '') {
+                continue;
+            }
+            $parts = preg_split('/\s+/', $candidate);
+            $url = $parts[0];
+            if ($first === '') {
+                $first = $url;
+            }
+
+            $score = 0;
+            if (isset($parts[1]) && preg_match('/^([\d.]+)([wx])$/i', $parts[1], $m)) {
+                $score = (float) $m[1]; // "w" aj "x" - vyššie číslo = väčšie rozlíšenie
+            }
+
+            if ($score > $bestScore) {
+                $bestScore = $score;
+                $best = $url;
+            }
+        }
+
+        return $best !== '' ? $best : $first;
+    }
+
     private function hasAllowedExtension($src)
     {
         $allowed = $this->getAllowedExtensionsList();
@@ -254,12 +400,16 @@ trait FgautolightboxLogic
         $images = $xpath->query('//img[not(ancestor::a)]');
 
         foreach ($images as $img) {
-            // Preferuj data-src (bežná konvencia lazy-load knižníc, napr. tried
-            // "lazy") pred src - tá pri lazy-loade často obsahuje len placeholder.
-            $srcVal = $img->getAttribute('data-src');
-            if ($srcVal === '') {
-                $srcVal = $img->getAttribute('src');
-            }
+            // Vyber najlepšiu dostupnú URL: data-full/data-highres > data-src >
+            // najväčšie rozlíšenie zo srcset (vrátane <picture><source> ak je
+            // obrázok v ňom zabalený) > src (viď pickBestSrc()).
+            $srcVal = $this->pickBestSrc(array(
+                'data-full'     => $img->getAttribute('data-full'),
+                'data-highres'  => $img->getAttribute('data-highres'),
+                'data-src'      => $img->getAttribute('data-src'),
+                'srcset'        => $this->getCombinedSrcset($img),
+                'src'           => $img->getAttribute('src'),
+            ));
             if ($srcVal === '') {
                 continue;
             }
@@ -302,8 +452,18 @@ trait FgautolightboxLogic
                 $a->setAttribute('data-alb-alt', $altValue);
             }
 
-            $img->parentNode->insertBefore($a, $img);
-            $a->appendChild($img);
+            // Ak je obrázok vnútri <picture>, obaľ CELÝ <picture> element,
+            // nie len <img> v ňom. Podľa HTML špecifikácie funguje natívne
+            // prepínanie <source> len keď je <img> PRIAMYM potomkom <picture>
+            // - keby sme vložili <a> medzi ne, natívne responzívne/formátové
+            // prepínanie na stránke by prestalo fungovať (overené testom).
+            $wrapTarget = $this->findPictureAncestor($img);
+            if ($wrapTarget === null) {
+                $wrapTarget = $img;
+            }
+
+            $wrapTarget->parentNode->insertBefore($a, $wrapTarget);
+            $a->appendChild($wrapTarget);
         }
 
         $body = $dom->getElementsByTagName('body')->item(0);
@@ -319,6 +479,14 @@ trait FgautolightboxLogic
         return $result;
     }
 
+    /**
+     * Núdzová záloha, ak DOMDocument nie je na serveri dostupné (extrémne
+     * zriedkavé). Známe obmedzenie oproti hlavnej DOM vetve: keďže táto
+     * metóda spracúva každý <img> izolovane regexom, nevie o okolitej
+     * <picture>/<source> štruktúre - obrázky vnútri <picture> tu dostanú
+     * lightbox odkaz len na základe VLASTNÉHO srcset/src atribútu <img>,
+     * bez zohľadnenia rozlíšení zo sesterských <source> elementov.
+     */
     private function wrapImagesRegexFallback($html)
     {
         $existingLinks = array();
@@ -344,12 +512,17 @@ trait FgautolightboxLogic
                 $imgTag  = $matches[0];
                 $imgAttr = $matches[1];
 
-                // Preferuj data-src (lazy-load knižnice) pred src
-                if (preg_match('/data-src=["\']([^"\']+)["\']/', $imgAttr, $dataSrc)) {
-                    $srcVal = $dataSrc[1];
-                } elseif (preg_match('/src=["\']([^"\']+)["\']/', $imgAttr, $src)) {
-                    $srcVal = $src[1];
-                } else {
+                // Vyber najlepšiu dostupnú URL rovnakou logikou ako DOM vetva.
+                // (?:^|\s) hranica pred názvom atribútu predchádza chybnému
+                // zachyteniu napr. "src=" ako podreťazca vnútri "data-src=".
+                $attrs = array();
+                foreach (array('data-full', 'data-highres', 'data-src', 'srcset', 'src') as $attrName) {
+                    if (preg_match('/(?:^|\s)' . preg_quote($attrName, '/') . '\s*=\s*["\']([^"\']+)["\']/', $imgAttr, $m)) {
+                        $attrs[$attrName] = $m[1];
+                    }
+                }
+                $srcVal = $this->pickBestSrc($attrs);
+                if ($srcVal === '') {
                     return $imgTag;
                 }
 

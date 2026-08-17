@@ -1,5 +1,134 @@
 # Changelog — plg_content_fgautolightbox
 
+## 1.2.0
+Response to a Qwen AI code review:
+
+**A. Responsive image support (`srcset` and `data-full`)**
+
+- The plugin now picks the best available image URL using a clear
+  priority order: `data-full` / `data-highres` (explicit author choice)
+  → `data-src` (lazy-load convention) → the largest resolution found in
+  `srcset` → `src` (final fallback).
+- Solves the original problem: on templates using `srcset` for
+  responsive images, the lightbox previously always opened whatever
+  `href` ended up being (same as `src`/`data-src`), which could be a
+  smaller, compressed variant even on a large monitor.
+- New optional `data-full`/`data-highres` attribute support lets you
+  explicitly point at a genuine full-resolution original when one exists
+  at a separate URL from anything in `srcset`.
+- `srcset` parsing supports both width descriptors (`800w`) and pixel
+  density descriptors (`2x`); the entry with the highest numeric value
+  wins, with a safe fallback to the first URL when descriptors are
+  missing or ambiguous.
+- Implemented identically in all three places the plugin reads an image
+  source: the DOM branch, the regex fallback, and JS (`MutationObserver`
+  for dynamically added images) — so server-rendered and dynamically
+  added images behave the same way.
+- **Bug found and fixed during testing**: the regex fallback's naive
+  attribute-name matching could accidentally match `src=` as a substring
+  inside `data-src=`, with correctness depending on attribute order in
+  the tag. Fixed by requiring a proper attribute boundary (start-of-string
+  or preceding whitespace) before the attribute name.
+- Verified with automated tests: `srcset` parsing (six scenarios,
+  including out-of-order entries and missing descriptors), the full
+  priority chain in both PHP branches and in JS, attribute-order
+  independence after the boundary fix, and a full regression pass to
+  confirm existing functionality (class exclusion, diacritics, existing
+  links, SVG exclusion, extension filtering) is unaffected.
+
+**B. Extensible context support (K2, Zoo, custom components)**
+
+- Problem: the plugin had a hardcoded allowlist of contexts
+  (`com_content.article`, `com_content.featured`, `com_content.category`,
+  `com_contact.contact`, `com_newsfeeds.newsfeed`) — sites using K2, Zoo,
+  or a custom component got no lightbox at all.
+- Solution: a new **"Extra allowed contexts"** setting extends the
+  built-in list without changing default behavior for existing sites.
+  Supports three formats, comma-separated:
+  - an exact context (`com_k2.item`)
+  - a whole component via wildcard (`com_k2.*`)
+  - the same wildcard written without the suffix (`com_k2`)
+- Deliberately kept as an allowlist extension rather than switching to a
+  blocklist (process everything except explicitly excluded) — a blocklist
+  would risk the plugin firing on unrelated `onContentPrepare` uses
+  (system-rendered fragments, modules, editor previews, etc.) that
+  happen to share the same event but were never meant to have images
+  auto-wrapped.
+- Verified with 11 automated test scenarios: default behavior unchanged
+  with no setting, exact-context matching, both wildcard syntaxes,
+  and multiple entries combined.
+
+**C. `MutationObserver` performance tuning**
+
+- Problem: watching the entire `document.body` with `subtree: true` can
+  add unnecessary CPU overhead on very dynamic pages (lots of animations,
+  chat widgets) unrelated to the article content.
+- Solution: a new **"Watch container (CSS selector)"** setting lets you
+  scope the `MutationObserver` to only the container(s) that actually
+  hold article content (e.g. `.item-page, .blog`), instead of the whole
+  page. Multiple comma-separated selectors are supported; each matching
+  element is watched individually.
+- Safety fallback: if the selector matches nothing (e.g. a typo), the
+  plugin falls back to watching the whole page rather than silently
+  disabling dynamic-image detection.
+- Left empty (default), behavior is exactly as before — no change for
+  existing sites.
+- Verified with 5 automated tests: a mutation *outside* the configured
+  container is correctly ignored, a mutation *inside* it is correctly
+  processed, an invalid/non-matching selector correctly falls back to
+  `document.body`, multiple containers via a comma-selector both work,
+  and the no-selector default behavior is unchanged.
+
+**E. `<picture>` element support**
+
+- Problem: when an editor inserts an image as
+  `<picture><source srcset="..."><img src="..."></picture>`, the plugin
+  correctly found the `<img>`, but the lightbox `href` was always just
+  the plain `src` — ignoring any higher-resolution variant offered
+  through the `<picture>`'s `<source>` elements.
+- Solution: the "largest resolution from srcset" logic from point A now
+  also looks at every `<source>` inside the enclosing `<picture>` (not
+  just the `<img>`'s own `srcset`), and picks the single largest
+  candidate across all of them — including across multiple `<source>`
+  elements used for format switching (e.g. WebP vs. JPEG).
+- **Real bug found and fixed during testing**: `DOMDocument`/`libxml`
+  does not treat `<source>` as the HTML5 void element it actually is —
+  it nests the following `<img>` *inside* `<source>` in its internal
+  tree instead of treating it as a sibling. Detecting the enclosing
+  `<picture>` therefore has to walk up the ancestor chain (not just
+  check the immediate parent), and then search for `<source>` elements
+  anywhere within that `<picture>` subtree (not just direct children).
+  Verified with jsdom (a spec-compliant HTML5 parser, unlike libxml)
+  that the actual served markup still parses correctly in a real
+  browser despite libxml's internal tree looking "wrong".
+- **A second, more serious bug found and fixed**: initially the plugin
+  wrapped just the `<img>` in the lightbox `<a>`, same as for any other
+  image. For a `<picture>`, this breaks something real: per the HTML
+  spec, native `<source>`-based responsive/format switching only
+  applies when `<img>` is a *direct child* of `<picture>` — inserting
+  an `<a>` in between silently disables that switching for the page's
+  normal (non-lightbox) display, confirmed by testing the actual
+  parsed DOM structure. Fixed by wrapping the *entire* `<picture>`
+  element in the lightbox link instead of just the `<img>` inside it,
+  in both the PHP DOM branch and JS (`MutationObserver` for
+  dynamically added images) — the `<picture>`'s internal structure is
+  left completely untouched, so native responsive switching keeps
+  working exactly as before, while the whole visible image area is
+  still clickable for the lightbox.
+- **Known limitation, documented in the code**: the rare regex fallback
+  path (used only if `DOMDocument` isn't available on the server at
+  all) processes each `<img>` in isolation and has no awareness of a
+  surrounding `<picture>`/`<source>` structure — it falls back to the
+  `<img>`'s own attributes only. This only affects that fallback path,
+  not the primary DOM-based processing virtually every real
+  installation uses.
+- Verified with automated tests throughout: srcset combination across
+  multiple `<source>` elements, the DOM-nesting workaround, real-browser
+  parsing of the served markup (confirming `<img>` stays a direct child
+  of `<picture>`), the JS-side dynamic-image equivalent, and a full
+  regression pass confirming ordinary (non-`<picture>`) images are
+  completely unaffected.
+
 ## 1.1.0 (fix)
 - Added the FG brand to the plugin's **displayed name** in the admin as
   well — the previous package only renamed the element/class, but the
