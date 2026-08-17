@@ -119,6 +119,7 @@ trait FgautolightboxLogic
                 'captionMobile'     => (bool) (int) $this->params->get('caption_mobile', 0),
                 'watchDynamic'      => (bool) (int) $this->params->get('watch_dynamic', 1),
                 'showNavigation'    => (bool) (int) $this->params->get('show_navigation', 1),
+                'preloadAdjacent'   => (bool) (int) $this->params->get('preload_adjacent', 1),
                 'watchContainer'    => trim($this->params->get('watch_container', '')),
                 'allowedExtensions' => $this->getAllowedExtensionsList(),
             );

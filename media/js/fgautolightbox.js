@@ -19,6 +19,7 @@
         watchDynamic: true,
         watchContainer: "",
         showNavigation: true,
+        preloadAdjacent: true,
         allowedExtensions: ["jpg", "jpeg", "png", "gif", "webp", "avif"]
     };
 
@@ -118,6 +119,7 @@
         // Predbežne načíta susedné obrázky (predchádzajúci a nasledujúci), aby
         // navigácia šípkami pôsobila plynulejšie, bez viditeľného načítavania.
         function preloadNeighbors() {
+            if (!ALB_CONFIG.preloadAdjacent) return;
             if (items.length < 2) return;
             [
                 (current + 1) % items.length,

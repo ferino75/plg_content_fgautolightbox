@@ -1,5 +1,18 @@
 # Changelog — plg_content_fgautolightbox
 
+## 1.3.1
+Response to a ChatGPT code review suggestion (P3, new feature):
+
+- **New "Preload adjacent images" parameter** (enabled by default,
+  matching all prior behavior). Controls whether the previous/next
+  image is fetched in the background while the lightbox is open. Useful
+  to disable on very large galleries where the extra background
+  downloads aren't worth it.
+- Verified with automated tests: with the setting enabled, opening the
+  lightbox triggers preload requests for both neighbors as before; with
+  it disabled, no preload requests are made at all. Full regression
+  pass across all prior points confirms no other impact.
+
 ## 1.3.0
 Response to a ChatGPT code review suggestion (P3, new feature):
 
