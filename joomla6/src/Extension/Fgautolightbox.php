@@ -10,10 +10,10 @@ use FG\Plugin\Content\Fgautolightbox\Support\ExtensionFilter;
 use FG\Plugin\Content\Fgautolightbox\Support\HtmlProcessor;
 use FG\Plugin\Content\Fgautolightbox\Support\LinkAttributes;
 use FG\Plugin\Content\Fgautolightbox\Support\SrcSetResolver;
+use Joomla\CMS\Event\Content\ContentPrepareEvent;
 use Joomla\CMS\Plugin\CMSPlugin;
 use Joomla\CMS\Uri\Uri;
 use Joomla\Event\DispatcherInterface;
-use Joomla\Event\Event;
 use Joomla\Event\SubscriberInterface;
 
 \defined('_JEXEC') or die;
@@ -64,14 +64,16 @@ final class Fgautolightbox extends CMSPlugin implements SubscriberInterface
         return ['onContentPrepare' => 'onContentPrepare'];
     }
 
-    public function onContentPrepare(Event $event): void
+    public function onContentPrepare(ContentPrepareEvent $event): void
     {
-        // Štandardný Joomla vzor extrakcie pôvodných pozičných argumentov -
-        // funguje pre GenericEvent aj konkrétne triedy udalostí ako
-        // ContentPrepareEvent (pozičné poradie, nie kľúče poľa).
-        [$context, $article] = array_values($event->getArguments());
-
-        $this->handle((string) $context, $article);
+        // Konkrétna typovaná trieda udalosti namiesto všeobecného Event +
+        // array_values($event->getArguments()) - ten druhý prístup je
+        // oficiálne odporúčaný len vtedy, keď plugin musí zostať kompatibilný
+        // aj s prípadným starším GenericEvent (napr. classic build,
+        // podporujúci J3-J6 naraz). Tento natívny build cieli výhradne na
+        // Joomla 6, kde je ContentPrepareEvent garantovaná, takže menované
+        // gettery (getContext()/getItem()) sú tu presnejšie a čitateľnejšie.
+        $this->handle($event->getContext(), $event->getItem());
     }
 
     private function handle(string $context, object $article): void

@@ -4,6 +4,34 @@ This changelog covers the **native Joomla 6 build** only (this `joomla6/`
 folder). For the classic Joomla 3.10 build's history, see
 [`../CHANGELOG.md`](../CHANGELOG.md) in the repository root.
 
+## 2.0.3
+Response to a ChatGPT code review recommendation (P1, "more properly
+Joomla 6 native" - not fixing a bug, improving idiomatic correctness):
+
+- **`onContentPrepare()` now type-hints the concrete
+  `Joomla\CMS\Event\Content\ContentPrepareEvent`** instead of the
+  generic `Joomla\Event\Event`, and extracts the context/item via the
+  named accessors `$event->getContext()`/`$event->getItem()` instead of
+  `array_values($event->getArguments())`.
+- The `array_values(...)` pattern remains the officially documented,
+  correct choice when a plugin must stay compatible with **both**
+  `GenericEvent` and a concrete event class (exactly why it was kept in
+  the classic build, which supports J3 through J6 from one codebase).
+  This native build targets Joomla 6 exclusively, where
+  `ContentPrepareEvent` is guaranteed to be dispatched, so the named
+  accessors are strictly more correct here: no positional-argument-order
+  assumption, and immediate static type errors instead of silent
+  `null`/wrong-type bugs if Joomla's argument order or count ever
+  changed in some future version.
+- Verified against a `ContentPrepareEvent` stub matching the real
+  `getContext(): string` / `getItem(): object` contract confirmed via
+  Joomla's own API documentation and plugin tutorial (both explicitly
+  demonstrate this exact usage pattern) - including a full regression
+  of admin-context skipping and the per-article `rel` grouping fix.
+  Full regression pass across all 34 isolated Support-class tests
+  confirms no other behavior changed (this change only touches the
+  Joomla-facing event handling, not the pure-PHP processing logic).
+
 ## 2.0.2
 Response to a ChatGPT code review observation (P2, quality improvement):
 
