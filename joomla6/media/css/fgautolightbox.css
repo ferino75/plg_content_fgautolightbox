@@ -1,0 +1,123 @@
+/* AutoLightbox plugin - statický CSS súbor (cachovateľný prehliadačom)
+ *
+ * Vzhľad si viete prispôsobiť cez CSS premenné, bez úpravy tohto súboru -
+ * stačí vo vlastnom CSS (šablóna, custom.css a pod.) pridať napr.:
+ *
+ *   #alb-overlay {
+ *       --alb-z-index: 999999999;      // ak koliduje s iným prvkom na stránke
+ *       --alb-overlay-bg: rgba(20,20,40,0.95);
+ *       --alb-caption-color: #fff;
+ *   }
+ */
+#alb-overlay {
+    --alb-z-index: 99999;
+    --alb-overlay-bg: rgba(0,0,0,0.92);
+    --alb-text-color: #fff;
+    --alb-caption-color: #eee;
+    --alb-caption-size: 13px;
+    --alb-nav-size-mobile: 36px;
+    --alb-nav-size-desktop: 56px;
+    --alb-counter-bg: rgba(0,0,0,0.5);
+    --alb-counter-color: #ccc;
+
+    display:none; position:fixed; z-index:var(--alb-z-index);
+    top:0; left:0; width:100%; height:100%;
+    background:rgba(0,0,0,0);
+    cursor:zoom-out;
+    transition:background 0.3s ease;
+}
+#alb-overlay.alb-open { display:block; }
+#alb-overlay.alb-visible { background:var(--alb-overlay-bg); }
+#alb-wrap {
+    position:absolute; top:50%; left:50%;
+    transform:translate(-50%,-50%) scale(0.88);
+    text-align:center;
+    width:100vw;
+    opacity:0;
+    transition:opacity 0.3s ease, transform 0.3s ease;
+}
+#alb-overlay.alb-visible #alb-wrap {
+    opacity:1;
+    transform:translate(-50%,-50%) scale(1);
+}
+#alb-img {
+    max-width:100vw; max-height:100vh;
+    object-fit:contain;
+    display:block; margin:0 auto;
+    transition:opacity 0.18s ease;
+}
+#alb-img.alb-loading { opacity:0.25; }
+@media (min-width:600px) {
+    #alb-wrap { width:92vw; }
+    #alb-img { max-width:88vw; max-height:82vh; box-shadow:0 4px 40px rgba(0,0,0,0.6); }
+}
+#alb-caption {
+    color:var(--alb-caption-color); font-size:var(--alb-caption-size);
+    margin-top:8px; text-align:center;
+    padding:0 10px;
+    opacity:0; transition:opacity 0.3s ease 0.15s;
+    display:none;
+}
+@media (min-width:600px) {
+    #alb-caption { display:block; }
+}
+/* Ak je v nastaveniach pluginu zapnuté "zobraziť popisok aj na mobile",
+   PHP pridá triedu "alb-caption-mobile" na #alb-overlay - táto pravidlo má
+   vyššiu špecifickosť ako základné mobilné pravidlo vyššie. */
+#alb-overlay.alb-caption-mobile #alb-caption { display:block; }
+#alb-overlay.alb-visible #alb-caption { opacity:1; }
+#alb-close {
+    position:fixed; top:10px; right:14px;
+    color:var(--alb-text-color); font-size:var(--alb-nav-size-mobile); line-height:1;
+    cursor:pointer; z-index:calc(var(--alb-z-index) + 1);
+    opacity:0; transition:opacity 0.3s ease 0.1s;
+    padding:6px;
+    /* Reset predvoleného vzhľadu <button> */
+    background:none; border:none; font-family:inherit;
+}
+#alb-overlay.alb-visible #alb-close { opacity:0.85; }
+#alb-close:hover { opacity:1 !important; }
+#alb-prev, #alb-next {
+    position:fixed; top:50%; transform:translateY(-50%);
+    color:var(--alb-text-color); line-height:1;
+    cursor:pointer; z-index:calc(var(--alb-z-index) + 1);
+    opacity:0; transition:opacity 0.3s ease 0.1s;
+    font-size:var(--alb-nav-size-mobile);
+    padding:10px 8px;
+    background:rgba(0,0,0,0.25);
+    border-radius:4px;
+    /* Reset predvoleného vzhľadu <button> */
+    border:none; font-family:inherit;
+}
+@media (min-width:600px) {
+    #alb-prev, #alb-next {
+        font-size:var(--alb-nav-size-desktop);
+        padding:0 15px;
+        background:none;
+    }
+}
+#alb-overlay.alb-visible #alb-prev,
+#alb-overlay.alb-visible #alb-next { opacity:0.6; }
+#alb-prev { left:0; }
+#alb-next { right:0; }
+#alb-prev:hover, #alb-next:hover { opacity:1; }
+#alb-close:focus-visible,
+#alb-prev:focus-visible,
+#alb-next:focus-visible {
+    outline:2px solid var(--alb-text-color);
+    outline-offset:2px;
+    opacity:1;
+}
+#alb-counter {
+    position:fixed; bottom:12px; left:50%;
+    transform:translateX(-50%);
+    color:var(--alb-counter-color); font-size:12px;
+    background:var(--alb-counter-bg);
+    padding:3px 10px; border-radius:10px;
+    z-index:calc(var(--alb-z-index) + 1);
+    opacity:0; transition:opacity 0.3s ease 0.1s;
+}
+#alb-overlay.alb-visible #alb-counter { opacity:1; }
+
+/* Pevná funkčná trieda - vždy pridaná pluginom, nezávislá od "link_class" nastavenia */
+a.alb-link { cursor:zoom-in; }

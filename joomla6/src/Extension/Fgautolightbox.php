@@ -1,0 +1,219 @@
+<?php
+
+declare(strict_types=1);
+
+namespace FG\Plugin\Content\Fgautolightbox\Extension;
+
+use FG\Plugin\Content\Fgautolightbox\Support\CaptionMode;
+use FG\Plugin\Content\Fgautolightbox\Support\ContentScopeResolver;
+use FG\Plugin\Content\Fgautolightbox\Support\ExtensionFilter;
+use FG\Plugin\Content\Fgautolightbox\Support\HtmlProcessor;
+use FG\Plugin\Content\Fgautolightbox\Support\LinkAttributes;
+use FG\Plugin\Content\Fgautolightbox\Support\SrcSetResolver;
+use Joomla\CMS\Plugin\CMSPlugin;
+use Joomla\CMS\Uri\Uri;
+use Joomla\Event\DispatcherInterface;
+use Joomla\Event\Event;
+use Joomla\Event\SubscriberInterface;
+
+\defined('_JEXEC') or die;
+
+/**
+ * Content - FG AutoLightbox (natívny Joomla 6 build).
+ *
+ * Automaticky pridá lightbox ku všetkým obrázkom v článkoch, bez zásahu
+ * redaktora. Táto vetva podporuje výhradne Joomla 6+ (PHP 8.3+) - pre
+ * Joomla 3.10 existuje samostatná, ďalej nevyvíjaná "classic" vetva v
+ * koreňovom priečinku repozitára.
+ */
+final class Fgautolightbox extends CMSPlugin implements SubscriberInterface
+{
+    private static bool $assetsLoaded = false;
+
+    private readonly SrcSetResolver $srcSetResolver;
+    private readonly ContentScopeResolver $scopeResolver;
+    private readonly HtmlProcessor $htmlProcessor;
+
+    public function __construct(DispatcherInterface $dispatcher, array $config = [])
+    {
+        parent::__construct($dispatcher, $config);
+
+        // Skladanie závislostí priamo v konštruktore (nie cez kontajner) je
+        // zámerný, pragmatický kompromis - tieto triedy sú bezstavové
+        // (žiadne Joomla API, žiadne I/O v konštruktore) a Joomla plugin
+        // systém sám osebe nepodporuje autowiring pre bežné pluginy mimo
+        // services/provider.php. Skutočný DI benefit je v tom, že
+        // HtmlProcessor aj jeho závislosti sa dajú testovať úplne izolovane
+        // od Joomly (viď tests/).
+        //
+        // Používa $this->params (Registry, korektne naparsovaný Joomla
+        // rodičovským konštruktorom vyššie), nie surové $config['params'] -
+        // to by mohlo byť podľa verzie/kontextu buď pole, JSON reťazec,
+        // alebo už hotový Registry objekt.
+        $this->srcSetResolver = new SrcSetResolver();
+        $this->scopeResolver = new ContentScopeResolver();
+        $this->htmlProcessor = new HtmlProcessor(
+            $this->srcSetResolver,
+            new LinkAttributes(),
+            ExtensionFilter::fromCsv((string) $this->params->get('allowed_extensions', 'jpg,jpeg,png,gif,webp,avif')),
+        );
+    }
+
+    public static function getSubscribedEvents(): array
+    {
+        return ['onContentPrepare' => 'onContentPrepare'];
+    }
+
+    public function onContentPrepare(Event $event): void
+    {
+        // Štandardný Joomla vzor extrakcie pôvodných pozičných argumentov -
+        // funguje pre GenericEvent aj konkrétne triedy udalostí ako
+        // ContentPrepareEvent (pozičné poradie, nie kľúče poľa).
+        [$context, $article] = array_values($event->getArguments());
+
+        $this->handle((string) $context, $article);
+    }
+
+    private function handle(string $context, object $article): void
+    {
+        if ($this->getApplication()->isClient('administrator')) {
+            return;
+        }
+
+        $extraContexts = trim((string) $this->params->get('extra_contexts', ''));
+        if (!$this->scopeResolver->isAllowed($context, $extraContexts)) {
+            return;
+        }
+
+        $component = $this->scopeResolver->componentOf($context);
+        if (\in_array($component, $this->csvList((string) $this->params->get('exclude_components', '')), true)) {
+            return;
+        }
+
+        $excludeUrls = $this->csvList((string) $this->params->get('exclude_urls', ''));
+        if ($excludeUrls !== [] && $this->urlMatchesAny($excludeUrls)) {
+            return;
+        }
+
+        if (empty($article->text)) {
+            return;
+        }
+
+        $instanceKey = $this->scopeResolver->instanceKeyFor($article);
+
+        $article->text = $this->htmlProcessor->wrapImages(
+            (string) $article->text,
+            $instanceKey,
+            (string) $this->params->get('gallery_group', 'autolightbox-gallery'),
+            (string) $this->params->get('link_class', 'autolightbox'),
+            CaptionMode::tryFrom((string) $this->params->get('show_caption', 'alt')) ?? CaptionMode::Alt,
+            $this->csvList((string) $this->params->get('exclude_classes', '')),
+        );
+
+        $this->ensureAssetsLoaded();
+    }
+
+    private function ensureAssetsLoaded(): void
+    {
+        if (self::$assetsLoaded) {
+            return;
+        }
+
+        $linkClass = (string) $this->params->get('link_class', 'autolightbox');
+
+        $config = [
+            'linkClass' => $linkClass !== 'alb-link' ? $linkClass : '',
+            'galleryGroup' => (string) $this->params->get('gallery_group', 'autolightbox-gallery'),
+            'excludeClasses' => $this->csvList((string) $this->params->get('exclude_classes', '')),
+            'showCaption' => (string) $this->params->get('show_caption', 'alt'),
+            'captionMobile' => (bool) (int) $this->params->get('caption_mobile', 0),
+            'watchDynamic' => (bool) (int) $this->params->get('watch_dynamic', 1),
+            'showNavigation' => (bool) (int) $this->params->get('show_navigation', 1),
+            'preloadAdjacent' => (bool) (int) $this->params->get('preload_adjacent', 1),
+            'watchContainer' => trim((string) $this->params->get('watch_container', '')),
+            'allowedExtensions' => $this->csvList(
+                (string) $this->params->get('allowed_extensions', 'jpg,jpeg,png,gif,webp,avif'),
+                lowercase: true,
+            ),
+        ];
+
+        $wa = $this->getApplication()->getDocument()->getWebAssetManager();
+        $mediaBase = $this->getMediaBaseUri();
+
+        // Priama registrácia cez registerAndUseStyle()/registerAndUseScript()
+        // namiesto addRegistryFile('...joomla.asset.json') + useStyle()/
+        // useScript(). Pôvodný prístup cez registry súbor sa na živom
+        // Joomla 6.1.2 webe overil ako nefunkčný - inline config script sa
+        // vyrenderoval správne, ale samotné <link>/<script src> pre CSS/JS
+        // sa do stránky vôbec nedostali (potichu, bez chyby). Táto priamejšia
+        // metóda nepotrebuje žiadny registry súbor a je to zdokumentovaný,
+        // priamo volateľný spôsob pre jednorazovú registráciu vlastného assetu.
+        $wa->registerAndUseStyle(
+            'plg_content_fgautolightbox.style',
+            $mediaBase . '/css/fgautolightbox.css?v=' . $this->getAssetCacheBuster('css/fgautolightbox.css'),
+        );
+        $wa->registerAndUseScript(
+            'plg_content_fgautolightbox.script',
+            $mediaBase . '/js/fgautolightbox.js?v=' . $this->getAssetCacheBuster('js/fgautolightbox.js'),
+            [],
+            ['defer' => true],
+        );
+
+        // JSON_HEX_* flagy sú obranná vrstva navyše (config prichádza z
+        // administrácie, ktorú upravuje dôveryhodný administrátor, nie z
+        // nedôveryhodného vstupu) - zabránia tomu, aby hodnota z nastavení
+        // mohla vytvoriť sekvenciu ako </script> v <script> kontexte.
+        $configJson = json_encode($config, \JSON_HEX_TAG | \JSON_HEX_AMP | \JSON_HEX_APOS | \JSON_HEX_QUOT);
+        $wa->addInlineScript(
+            'window.FG_AUTOLIGHTBOX_CONFIG = ' . $configJson . ';',
+            [],
+            [],
+            ['plg_content_fgautolightbox.script'],
+        );
+
+        self::$assetsLoaded = true;
+    }
+
+    private function getMediaBaseUri(): string
+    {
+        return rtrim(Uri::root(true), '/') . '/media/plg_content_fgautolightbox';
+    }
+
+    /**
+     * Cache-busting hodnota pre statický CSS/JS súbor, založená na čase jeho
+     * poslednej zmeny - rovnaký, osvedčený mechanizmus ako v classic builde.
+     */
+    private function getAssetCacheBuster(string $relativePath): string
+    {
+        $fullPath = JPATH_ROOT . '/media/plg_content_fgautolightbox/' . ltrim($relativePath, '/');
+        $mtime = @filemtime($fullPath);
+
+        return $mtime !== false ? (string) $mtime : '1';
+    }
+
+    /**
+     * @return string[]
+     */
+    private function csvList(string $csv, bool $lowercase = false): array
+    {
+        $values = array_filter(array_map('trim', explode(',', $csv)));
+
+        return $lowercase ? array_values(array_map('strtolower', $values)) : array_values($values);
+    }
+
+    /**
+     * @param string[] $patterns
+     */
+    private function urlMatchesAny(array $patterns): bool
+    {
+        $currentUri = Uri::getInstance()->toString(['path', 'query']);
+
+        foreach ($patterns as $pattern) {
+            if (mb_stripos($currentUri, $pattern) !== false) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+}

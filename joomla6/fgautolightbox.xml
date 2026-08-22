@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="utf-8"?>
+<extension type="plugin" group="content" method="upgrade">
+    <name>PLG_CONTENT_FGAUTOLIGHTBOX</name>
+    <author>FG</author>
+    <version>2.0.1</version>
+    <description>PLG_CONTENT_FGAUTOLIGHTBOX_XML_DESCRIPTION</description>
+    <namespace path="src">FG\Plugin\Content\Fgautolightbox</namespace>
+    <files>
+        <folder plugin="fgautolightbox">services</folder>
+        <folder>src</folder>
+    </files>
+    <media destination="plg_content_fgautolightbox" folder="media">
+        <folder>css</folder>
+        <folder>js</folder>
+    </media>
+    <languages folder="language">
+        <language tag="en-GB">en-GB/en-GB.plg_content_fgautolightbox.ini</language>
+        <language tag="en-GB">en-GB/en-GB.plg_content_fgautolightbox.sys.ini</language>
+        <language tag="sk-SK">sk-SK/sk-SK.plg_content_fgautolightbox.ini</language>
+        <language tag="sk-SK">sk-SK/sk-SK.plg_content_fgautolightbox.sys.ini</language>
+    </languages>
+    <updateservers>
+        <server type="extension" priority="1" name="Content - FG AutoLightbox (Joomla 6) Update Site">https://raw.githubusercontent.com/ferino75/plg_content_fgautolightbox/master/joomla6/updates.xml</server>
+    </updateservers>
+    <config>
+        <fields name="params">
+            <fieldset name="basic">
+                <field
+                    name="gallery_group"
+                    type="text"
+                    default="autolightbox-gallery"
+                    label="PLG_CONTENT_FGAUTOLIGHTBOX_FIELD_GALLERY_GROUP_LABEL"
+                    description="PLG_CONTENT_FGAUTOLIGHTBOX_FIELD_GALLERY_GROUP_DESC"
+                />
+                <field
+                    name="link_class"
+                    type="text"
+                    default="autolightbox"
+                    label="PLG_CONTENT_FGAUTOLIGHTBOX_FIELD_LINK_CLASS_LABEL"
+                    description="PLG_CONTENT_FGAUTOLIGHTBOX_FIELD_LINK_CLASS_DESC"
+                />
+                <field
+                    name="exclude_classes"
+                    type="text"
+                    default=""
+                    label="PLG_CONTENT_FGAUTOLIGHTBOX_FIELD_EXCLUDE_CLASSES_LABEL"
+                    description="PLG_CONTENT_FGAUTOLIGHTBOX_FIELD_EXCLUDE_CLASSES_DESC"
+                />
+                <field
+                    name="show_caption"
+                    type="list"
+                    default="alt"
+                    label="PLG_CONTENT_FGAUTOLIGHTBOX_FIELD_SHOW_CAPTION_LABEL"
+                    description="PLG_CONTENT_FGAUTOLIGHTBOX_FIELD_SHOW_CAPTION_DESC">
+                    <option value="alt">PLG_CONTENT_FGAUTOLIGHTBOX_FIELD_SHOW_CAPTION_OPT_ALT</option>
+                    <option value="filename">PLG_CONTENT_FGAUTOLIGHTBOX_FIELD_SHOW_CAPTION_OPT_FILENAME</option>
+                    <option value="none">PLG_CONTENT_FGAUTOLIGHTBOX_FIELD_SHOW_CAPTION_OPT_NONE</option>
+                </field>
+                <field
+                    name="caption_mobile"
+                    type="list"
+                    default="0"
+                    label="PLG_CONTENT_FGAUTOLIGHTBOX_FIELD_CAPTION_MOBILE_LABEL"
+                    description="PLG_CONTENT_FGAUTOLIGHTBOX_FIELD_CAPTION_MOBILE_DESC">
+                    <option value="0">PLG_CONTENT_FGAUTOLIGHTBOX_FIELD_CAPTION_MOBILE_OPT_NO</option>
+                    <option value="1">PLG_CONTENT_FGAUTOLIGHTBOX_FIELD_CAPTION_MOBILE_OPT_YES</option>
+                </field>
+                <field
+                    name="extra_contexts"
+                    type="text"
+                    default=""
+                    label="PLG_CONTENT_FGAUTOLIGHTBOX_FIELD_EXTRA_CONTEXTS_LABEL"
+                    description="PLG_CONTENT_FGAUTOLIGHTBOX_FIELD_EXTRA_CONTEXTS_DESC"
+                />
+                <field
+                    name="exclude_components"
+                    type="text"
+                    default=""
+                    label="PLG_CONTENT_FGAUTOLIGHTBOX_FIELD_EXCLUDE_COMPONENTS_LABEL"
+                    description="PLG_CONTENT_FGAUTOLIGHTBOX_FIELD_EXCLUDE_COMPONENTS_DESC"
+                />
+                <field
+                    name="exclude_urls"
+                    type="text"
+                    default=""
+                    label="PLG_CONTENT_FGAUTOLIGHTBOX_FIELD_EXCLUDE_URLS_LABEL"
+                    description="PLG_CONTENT_FGAUTOLIGHTBOX_FIELD_EXCLUDE_URLS_DESC"
+                />
+                <field
+                    name="allowed_extensions"
+                    type="text"
+                    default="jpg,jpeg,png,gif,webp,avif"
+                    label="PLG_CONTENT_FGAUTOLIGHTBOX_FIELD_ALLOWED_EXTENSIONS_LABEL"
+                    description="PLG_CONTENT_FGAUTOLIGHTBOX_FIELD_ALLOWED_EXTENSIONS_DESC"
+                />
+                <field
+                    name="show_navigation"
+                    type="list"
+                    default="1"
+                    label="PLG_CONTENT_FGAUTOLIGHTBOX_FIELD_SHOW_NAVIGATION_LABEL"
+                    description="PLG_CONTENT_FGAUTOLIGHTBOX_FIELD_SHOW_NAVIGATION_DESC">
+                    <option value="1">PLG_CONTENT_FGAUTOLIGHTBOX_FIELD_SHOW_NAVIGATION_OPT_YES</option>
+                    <option value="0">PLG_CONTENT_FGAUTOLIGHTBOX_FIELD_SHOW_NAVIGATION_OPT_NO</option>
+                </field>
+                <field
+                    name="preload_adjacent"
+                    type="list"
+                    default="1"
+                    label="PLG_CONTENT_FGAUTOLIGHTBOX_FIELD_PRELOAD_ADJACENT_LABEL"
+                    description="PLG_CONTENT_FGAUTOLIGHTBOX_FIELD_PRELOAD_ADJACENT_DESC">
+                    <option value="1">PLG_CONTENT_FGAUTOLIGHTBOX_FIELD_PRELOAD_ADJACENT_OPT_YES</option>
+                    <option value="0">PLG_CONTENT_FGAUTOLIGHTBOX_FIELD_PRELOAD_ADJACENT_OPT_NO</option>
+                </field>
+                <field
+                    name="watch_dynamic"
+                    type="list"
+                    default="1"
+                    label="PLG_CONTENT_FGAUTOLIGHTBOX_FIELD_WATCH_DYNAMIC_LABEL"
+                    description="PLG_CONTENT_FGAUTOLIGHTBOX_FIELD_WATCH_DYNAMIC_DESC">
+                    <option value="1">PLG_CONTENT_FGAUTOLIGHTBOX_FIELD_WATCH_DYNAMIC_OPT_YES</option>
+                    <option value="0">PLG_CONTENT_FGAUTOLIGHTBOX_FIELD_WATCH_DYNAMIC_OPT_NO</option>
+                </field>
+                <field
+                    name="watch_container"
+                    type="text"
+                    default=""
+                    label="PLG_CONTENT_FGAUTOLIGHTBOX_FIELD_WATCH_CONTAINER_LABEL"
+                    description="PLG_CONTENT_FGAUTOLIGHTBOX_FIELD_WATCH_CONTAINER_DESC"
+                />
+            </fieldset>
+        </fields>
+    </config>
+</extension>

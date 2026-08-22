@@ -1,0 +1,22 @@
+{
+    "name": "fg/plg-content-fgautolightbox",
+    "description": "Content - FG AutoLightbox (Joomla 6 native build)",
+    "type": "joomla-plugin",
+    "license": "GPL-2.0-or-later",
+    "authors": [
+        {
+            "name": "FG"
+        }
+    ],
+    "require": {
+        "php": ">=8.3",
+        "ext-dom": "*",
+        "ext-json": "*",
+        "ext-mbstring": "*"
+    },
+    "autoload": {
+        "psr-4": {
+            "FG\\Plugin\\Content\\Fgautolightbox\\": "src/"
+        }
+    }
+}
