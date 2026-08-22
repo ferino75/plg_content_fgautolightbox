@@ -28,11 +28,26 @@ the full technical breakdown.
 
 If a site currently has the classic build installed (even on Joomla 6,
 where it still runs fine via its legacy/modern dual-path code), this
-native build is a **separate install**, not an in-place update — install
-this one, then uninstall or disable the classic plugin so images aren't
-processed twice. Your settings are not carried over automatically since
-they're stored per-plugin-instance; re-enter them in the new plugin's
-configuration (they're the same fields, same names).
+native build is a **separate install**, not an in-place update. Both
+builds share the same plugin element (`content`/`fgautolightbox`), so
+install them **in this order**:
+
+1. **Uninstall the classic plugin first** (System → Manage → Extensions,
+   or disable it at minimum if you're not ready to remove it yet).
+   Installing the native build on top of an active classic install risks
+   Joomla finding both the old flat `fgautolightbox.php` file and the
+   new `src/`/`services/` structure in the same plugin folder at once.
+2. **Then install this native build** on the now-clean folder.
+
+Your settings are not carried over automatically since they're stored
+per-plugin-instance; re-enter them in the new plugin's configuration
+(they're the same fields, same names).
+
+Note that Joomla's own **update system will never prompt this
+migration automatically** — the classic build's update channel is
+deliberately restricted to Joomla 3.x only (`targetplatform`), so a
+Joomla 6 site running the classic build won't see this native build
+offered as an "update". Migrating is a manual, one-time step.
 
 ## Requirements
 
