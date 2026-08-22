@@ -4,6 +4,39 @@ This changelog covers the **native Joomla 6 build** only (this `joomla6/`
 folder). For the classic Joomla 3.10 build's history, see
 [`../CHANGELOG.md`](../CHANGELOG.md) in the repository root.
 
+## 2.0.2
+Response to a ChatGPT code review observation (P2, quality improvement):
+
+- **`srcset` "w" and "x" descriptors were compared as if on the same
+  numeric scale.** `SrcSetResolver::parseLargestFromSrcset()` picked the
+  candidate with the highest raw number regardless of whether it came
+  from a width descriptor (`1200w`) or a pixel-density descriptor
+  (`2x`) - meaning `image.webp 2x, image.jpg 1200w` would compare `2`
+  against `1200` and pick `1200w`, which happened to be reasonable in
+  that specific example but isn't actually a valid comparison in
+  general (the two units aren't on the same scale). This matters
+  specifically because `getCombinedSrcset()` pools `srcset` values from
+  multiple `<picture><source>` elements together, and different
+  `<source>` elements can legitimately use different descriptor types.
+- **Fix:** candidates are now split by descriptor type first. If any
+  `"w"` candidates exist, only those are compared (largest width wins,
+  `"x"` candidates are ignored entirely for that comparison). Only when
+  there are no `"w"` candidates at all does it fall back to comparing
+  `"x"` candidates against each other.
+- Ported identically to both the PHP side (`SrcSetResolver`) and the JS
+  side (`MutationObserver` handling for dynamically added images) to
+  keep both processing paths consistent.
+- **Classic build (repository root) deliberately NOT changed** - it's
+  frozen per the earlier decision to stop Joomla 3.10 development, and
+  this quality improvement doesn't fix a user-visible bug, so it wasn't
+  worth reopening that line for.
+- Verified with automated tests reproducing the exact scenario from the
+  report (`2x` vs `1200w`), plus the more demanding case of a small `w`
+  number correctly beating a large `x` number, both in PHP and in a
+  real DOM environment (jsdom) for the JS side. Full regression pass
+  (34 isolated tests + 8 integration tests) confirms no other behavior
+  changed.
+
 ## 2.0.1
 **Real production bug**, found and reported directly from testing on a
 live Joomla 6.1.2 site (khanovaskola.sk):

@@ -211,22 +211,38 @@
 
         // Z hodnoty atribútu srcset vyberie URL s najväčším rozlíšením ("w"
         // alebo "x" deskriptor). Rovnaká logika ako PHP parseLargestFromSrcset().
+        // "w" (šírka v pixeloch) a "x" (hustota pixelov) nie sú navzájom
+        // porovnateľné jednotky na tej istej škále - "2x" a "1200w" sa nedajú
+        // zmysluplne porovnať ako čísla 2 vs 1200. Ak existuje aspoň jeden
+        // "w" kandidát, porovnávajú sa len "w" kandidáti (x sa ignorujú).
+        // Inak (len "x" kandidáti) sa porovnáva medzi sebou. Rovnaká logika
+        // ako PHP SrcSetResolver::parseLargestFromSrcset().
         function parseLargestFromSrcset(srcset) {
-            var candidates = srcset.split(",").map(function(s) { return s.trim(); });
-            var best = "", bestScore = -1, first = "";
-            candidates.forEach(function(candidate) {
-                if (!candidate) return;
+            var candidates = srcset.split(",").map(function(s) { return s.trim(); }).filter(Boolean);
+            var first = "";
+            var parsed = candidates.map(function(candidate) {
                 var parts = candidate.split(/\s+/);
                 var url = parts[0];
                 if (!first) first = url;
-                var score = 0;
+                var type = null, value = 0;
                 if (parts[1]) {
                     var m = parts[1].match(/^([\d.]+)([wx])$/i);
-                    if (m) score = parseFloat(m[1]);
+                    if (m) { type = m[2].toLowerCase(); value = parseFloat(m[1]); }
                 }
-                if (score > bestScore) { bestScore = score; best = url; }
+                return { url: url, type: type, value: value };
             });
-            return best || first;
+
+            var wCandidates = parsed.filter(function(c) { return c.type === "w"; });
+            var xCandidates = parsed.filter(function(c) { return c.type === "x"; });
+            var pool = wCandidates.length ? wCandidates : xCandidates;
+
+            if (!pool.length) return first;
+
+            var best = null, bestValue = -1;
+            pool.forEach(function(c) {
+                if (c.value > bestValue) { bestValue = c.value; best = c.url; }
+            });
+            return best !== null ? best : first;
         }
 
         // Vyber najlepšiu dostupnú URL: data-full/data-highres > data-src >

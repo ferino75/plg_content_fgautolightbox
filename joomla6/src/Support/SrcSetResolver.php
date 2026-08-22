@@ -46,11 +46,21 @@ final class SrcSetResolver
      * Z hodnoty atribútu srcset vyberie URL s najväčším rozlíšením (podľa "w"
      * alebo "x" deskriptora). Pri chýbajúcom/nejednoznačnom deskriptore sa
      * použije prvá položka ako záloha.
+     *
+     * Dôležité: "w" (šírka v pixeloch) a "x" (hustota pixelov) NIE SÚ
+     * navzájom porovnateľné jednotky na tej istej škále - "2x" a "1200w"
+     * nemožno zmysluplne porovnať ako čísla 2 vs 1200. Keďže táto metóda
+     * môže dostať kombinovaný zoznam poskladaný z viacerých <source>
+     * elementov (viď getCombinedSrcset()), z ktorých každý môže používať
+     * iný typ deskriptora, postupuje sa takto:
+     *   1. ak existuje aspoň jeden "w" kandidát, porovnávajú sa LEN "w"
+     *      kandidáti (najväčšia šírka vyhráva, "x" kandidáti sa ignorujú)
+     *   2. inak, ak existujú len "x" kandidáti, vyberie sa najväčší "x"
+     *   3. inak (žiadne deskriptory) - záloha na prvú položku
      */
     public function parseLargestFromSrcset(string $srcset): string
     {
-        $best = '';
-        $bestScore = -1.0;
+        $candidates = [];
         $first = '';
 
         foreach (array_filter(array_map('trim', explode(',', $srcset))) as $candidate) {
@@ -58,18 +68,35 @@ final class SrcSetResolver
             $url = $parts[0];
             $first = $first === '' ? $url : $first;
 
-            $score = 0.0;
+            $type = null;
+            $value = 0.0;
             if (isset($parts[1]) && preg_match('/^([\d.]+)([wx])$/i', $parts[1], $m)) {
-                $score = (float) $m[1]; // "w" aj "x" - vyššie číslo = väčšie rozlíšenie
+                $type = strtolower($m[2]);
+                $value = (float) $m[1];
             }
 
-            if ($score > $bestScore) {
-                $bestScore = $score;
-                $best = $url;
+            $candidates[] = ['url' => $url, 'type' => $type, 'value' => $value];
+        }
+
+        $wCandidates = array_filter($candidates, static fn (array $c) => $c['type'] === 'w');
+        $xCandidates = array_filter($candidates, static fn (array $c) => $c['type'] === 'x');
+
+        $pool = $wCandidates !== [] ? $wCandidates : $xCandidates;
+
+        if ($pool === []) {
+            return $first;
+        }
+
+        $best = null;
+        $bestValue = -1.0;
+        foreach ($pool as $candidate) {
+            if ($candidate['value'] > $bestValue) {
+                $bestValue = $candidate['value'];
+                $best = $candidate['url'];
             }
         }
 
-        return $best !== '' ? $best : $first;
+        return $best ?? $first;
     }
 
     /**
