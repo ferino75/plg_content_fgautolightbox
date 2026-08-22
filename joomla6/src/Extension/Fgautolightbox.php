@@ -110,6 +110,7 @@ final class Fgautolightbox extends CMSPlugin implements SubscriberInterface
 
         $instanceKey = $this->scopeResolver->instanceKeyFor($article);
 
+        $wrappedCount = 0;
         $article->text = $this->htmlProcessor->wrapImages(
             (string) $article->text,
             $instanceKey,
@@ -117,9 +118,18 @@ final class Fgautolightbox extends CMSPlugin implements SubscriberInterface
             (string) $this->params->get('link_class', 'autolightbox'),
             CaptionMode::tryFrom((string) $this->params->get('show_caption', 'alt')) ?? CaptionMode::Alt,
             $this->csvList((string) $this->params->get('exclude_classes', '')),
+            $wrappedCount,
         );
 
-        $this->ensureAssetsLoaded();
+        // Drobná výkonová optimalizácia: ak sa v tomto obsahu neobalil ani
+        // jeden obrázok, CSS/JS assety nie sú potrebné - S JEDNOU výnimkou:
+        // ak je watch_dynamic zapnuté, JS engine (MutationObserver) treba
+        // načítať aj tak, keďže obrázky sa môžu objaviť neskôr dynamicky
+        // (AJAX), aj keď pri prvom vykreslení stránky ešte žiadne nie sú.
+        $watchDynamic = (bool) (int) $this->params->get('watch_dynamic', 1);
+        if ($wrappedCount > 0 || $watchDynamic) {
+            $this->ensureAssetsLoaded();
+        }
     }
 
     private function ensureAssetsLoaded(): void

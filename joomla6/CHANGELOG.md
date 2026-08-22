@@ -4,6 +4,32 @@ This changelog covers the **native Joomla 6 build** only (this `joomla6/`
 folder). For the classic Joomla 3.10 build's history, see
 [`../CHANGELOG.md`](../CHANGELOG.md) in the repository root.
 
+## 2.0.5
+Response to a ChatGPT code review suggestion (performance, non-urgent):
+
+- **CSS/JS assets are no longer loaded unconditionally.** Previously,
+  `ensureAssetsLoaded()` ran after every `wrapImages()` call regardless
+  of whether any image was actually found and wrapped - meaning a plain
+  text article with zero images still triggered the lightbox CSS/JS on
+  every page load.
+- **The exact rule requested**: when `watch_dynamic` is enabled
+  (the default), assets are still always loaded - a `MutationObserver`
+  needs to be running to catch images that might be added later via
+  AJAX, even if the page has none on initial render. Only when
+  `watch_dynamic` is disabled does the plugin skip loading assets
+  entirely for content where nothing was actually wrapped.
+- `HtmlProcessor::wrapImages()` gained an optional by-reference output
+  parameter (`int &$wrappedCount = 0`) reporting how many images were
+  actually wrapped - deliberately backward compatible (default value
+  means every prior call site, including all 34 existing tests, keeps
+  working unchanged without passing it).
+- Verified with automated tests covering all four combinations: no
+  images, no counted images are ignored (e.g. `exclude_classes`-filtered
+  images correctly don't count), and - the case that matters most -
+  `watch_dynamic=true` with zero images still triggers asset loading.
+  Full regression pass (34 isolated + 6 site-client tests) confirms no
+  other behavior changed.
+
 ## 2.0.4
 Response to a ChatGPT code review recommendation (P1):
 

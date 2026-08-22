@@ -28,6 +28,11 @@ final class HtmlProcessor
 
     /**
      * @param string[] $excludeClasses
+     * @param int      $wrappedCount Voliteľný výstupný parameter (odovzdaný
+     *                               referenciou) - počet skutočne obalených
+     *                               obrázkov. Umožňuje volajúcemu kódu
+     *                               rozhodnúť, či má zmysel načítať CSS/JS
+     *                               assety (viď Fgautolightbox::handle()).
      */
     public function wrapImages(
         string $html,
@@ -36,7 +41,9 @@ final class HtmlProcessor
         string $linkClass,
         CaptionMode $captionMode,
         array $excludeClasses,
+        int &$wrappedCount = 0,
     ): string {
+        $wrappedCount = 0;
         $galleryGroup = $instanceKey !== '' ? $galleryGroupBase . ':' . $instanceKey : $galleryGroupBase;
 
         $dom = new \DOMDocument('1.0', 'UTF-8');
@@ -115,6 +122,7 @@ final class HtmlProcessor
             $wrapTarget = $this->srcSetResolver->findPictureAncestor($img) ?? $img;
             $wrapTarget->parentNode?->insertBefore($a, $wrapTarget);
             $a->appendChild($wrapTarget);
+            ++$wrappedCount;
         }
 
         $body = $dom->getElementsByTagName('body')->item(0);
