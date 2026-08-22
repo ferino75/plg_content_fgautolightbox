@@ -369,15 +369,48 @@
             }
         }
 
+        // Nájde <img>, ktorý súvisí s uzlom, na ktorom nastala zmena atribútu.
+        // Ak sa zmenil atribút priamo na <img>, vráti ho. Ak sa zmenil na
+        // <source> (napr. lazy-load knižnica dopĺňa srcset do <picture>
+        // neskôr), nájde <img> vo vnútri toho istého <picture>.
+        function resolveImageForAttributeChange(target) {
+            if (!target || target.nodeType !== 1) return null;
+            if (target.tagName === "IMG") return target;
+            if (target.tagName === "SOURCE") {
+                var picture = target.closest("picture");
+                return picture ? picture.querySelector("img") : null;
+            }
+            return null;
+        }
+
         if (ALB_CONFIG.watchDynamic && window.MutationObserver) {
             var albObserver = new MutationObserver(function(mutations) {
                 for (var i = 0; i < mutations.length; i++) {
-                    var added = mutations[i].addedNodes;
-                    for (var j = 0; j < added.length; j++) {
-                        scanForNewImages(added[j]);
+                    var mutation = mutations[i];
+
+                    if (mutation.type === "childList") {
+                        var added = mutation.addedNodes;
+                        for (var j = 0; j < added.length; j++) {
+                            scanForNewImages(added[j]);
+                        }
+                    } else if (mutation.type === "attributes") {
+                        // Zachytáva prípad, keď lazy-load knižnica nepridáva
+                        // nový <img> do DOM, ale len DOPĹŇA src/data-src/
+                        // srcset na už existujúcom (napr. IntersectionObserver
+                        // vlastnej knižnice, ktorá si počká, kým sa obrázok
+                        // priblíži k viewportu, a až vtedy nastaví atribút).
+                        var img = resolveImageForAttributeChange(mutation.target);
+                        if (img) wrapNewImage(img);
                     }
                 }
             });
+
+            var observerOptions = {
+                childList: true,
+                subtree: true,
+                attributes: true,
+                attributeFilter: ["src", "data-src", "srcset", "data-full", "data-highres"]
+            };
 
             // Ak je nastavený CSS selektor kontajnera, sleduj len jeho výskyty
             // (výkonovo lacnejšie na stránkach s "živým" DOM mimo obsahu
@@ -398,7 +431,7 @@
                 containers = [document.body];
             }
             containers.forEach(function(container) {
-                albObserver.observe(container, { childList: true, subtree: true });
+                albObserver.observe(container, observerOptions);
             });
         }
     }

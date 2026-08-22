@@ -4,6 +4,42 @@ This changelog covers the **native Joomla 6 build** only (this `joomla6/`
 folder). For the classic Joomla 3.10 build's history, see
 [`../CHANGELOG.md`](../CHANGELOG.md) in the repository root.
 
+## 2.1.0
+Response to a ChatGPT code review observation, flagged as the most
+interesting gap for a minor release:
+
+- **`MutationObserver` now also catches attribute-only changes**, not
+  just new elements added to the page. Previously, only
+  `{ childList: true, subtree: true }` was observed - meaning an
+  `<img>` element already present in the DOM (with no usable `src`,
+  `data-src`, or `srcset` yet) that a lazy-load library later populates
+  via `img.setAttribute("src", "...")` / `img.src = "..."` was
+  completely invisible to the plugin, since no *new node* was ever
+  added - only an *attribute* changed on an existing one. This is a
+  very common lazy-load pattern (especially custom
+  `IntersectionObserver`-based implementations that leave `<img>`
+  attribute-less until the image nears the viewport).
+- Now also observes `{ attributes: true, attributeFilter: ["src",
+  "data-src", "srcset", "data-full", "data-highres"] }` - scoped to
+  only the attributes the plugin actually cares about, to keep the
+  performance cost contained (an unfiltered `attributes: true` would
+  fire on every attribute change of every element in the observed
+  subtree, which would be far too broad).
+- Also handles the `<picture><source>` case: if the attribute change
+  happens on a `<source>` element (not directly on the `<img>`), the
+  associated `<img>` inside the same `<picture>` is located and
+  re-evaluated.
+- Reuses the existing `wrapNewImage()` function unchanged - its guards
+  (`closest("a")`, the `WeakSet` "already processed" check) already
+  made it safe to call repeatedly/idempotently, so no new wrapping
+  logic was needed, only a new trigger path into the same function.
+- Verified with automated tests reproducing the exact scenario from the
+  report (bare `<img>` gaining a `src` attribute after insertion),
+  plus `data-src` set later, a `<source>`'s `srcset` set later inside
+  a `<picture>`, and a check that repeated attribute changes on an
+  already-wrapped image never cause double-wrapping. Full regression
+  of the `watch_container` scoping tests confirms no other impact.
+
 ## 2.0.5
 Response to a ChatGPT code review suggestion (performance, non-urgent):
 
