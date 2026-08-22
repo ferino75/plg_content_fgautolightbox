@@ -78,7 +78,14 @@ final class Fgautolightbox extends CMSPlugin implements SubscriberInterface
 
     private function handle(string $context, object $article): void
     {
-        if ($this->getApplication()->isClient('administrator')) {
+        // Whitelist ("iba site"), nie blacklist ("nie administrator") - plugin
+        // manipuluje HTML výstup a WebAssetManager frontendového dokumentu,
+        // čo dáva zmysel len v 'site' kliente. Joomla pozná aj ďalšie kliento
+        // typy (napr. 'api' pre Web Services REST API, 'cli' pre konzolu),
+        // kde by tieto operácie boli prinajmenšom zbytočné a v najhoršom
+        // prípade by mohli zlyhať (Document tam nemusí mať WebAssetManager
+        // v očakávanej podobe).
+        if (!$this->getApplication()->isClient('site')) {
             return;
         }
 

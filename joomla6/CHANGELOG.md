@@ -4,6 +4,38 @@ This changelog covers the **native Joomla 6 build** only (this `joomla6/`
 folder). For the classic Joomla 3.10 build's history, see
 [`../CHANGELOG.md`](../CHANGELOG.md) in the repository root.
 
+## 2.0.4
+Response to a ChatGPT code review recommendation (P1):
+
+- **Client check switched from a blacklist to a whitelist.** Previously:
+  `if ($this->getApplication()->isClient('administrator')) { return; }`
+  ("don't run in admin") - now:
+  `if (!$this->getApplication()->isClient('site')) { return; }`
+  ("only run in the site frontend").
+- Joomla recognizes more application client types than just `site` and
+  `administrator` - confirmed via Joomla's own API docs and issue
+  tracker: at minimum `cli` (console commands) and `installation`, and
+  Joomla 4+ added an `api` client for the Web Services REST API. A
+  plugin that manipulates HTML output and touches a frontend
+  `WebAssetManager` has no reasonable business running in any of those
+  contexts - and the old blacklist would have silently let all of them
+  through, since none of them are `'administrator'`.
+- Concretely, if Joomla's Web Services API triggers the same
+  `onContentPrepare` event chain while preparing article content for a
+  JSON response (plausible, since it reuses the same content pipeline),
+  the plugin would previously have tried to call
+  `getDocument()->getWebAssetManager()` on a document that may not
+  support it the same way - the site-only whitelist rules this out
+  entirely rather than depending on it happening not to break.
+- Verified with automated tests across five client types (`site`,
+  `administrator`, `api`, `cli`, `installation`) confirming only `site`
+  is processed - the three new ones (`api`, `cli`, `installation`) would
+  have incorrectly been processed under the old blacklist logic, and are
+  now correctly skipped. A dedicated test also confirms
+  `WebAssetManager` registration still completes successfully for the
+  `site` case. Full regression pass across all 34 isolated Support-class
+  tests confirms no other behavior changed.
+
 ## 2.0.3
 Response to a ChatGPT code review recommendation (P1, "more properly
 Joomla 6 native" - not fixing a bug, improving idiomatic correctness):
