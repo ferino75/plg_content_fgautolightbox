@@ -302,8 +302,48 @@
             return ALB_CONFIG.galleryGroup;
         }
 
+        // Aktualizuje href (a odvodené title/data-alb-alt) na existujúcom
+        // odkaze, ktorý sme sami vytvorili skôr - používa sa, keď sa zmenia
+        // zdrojové atribúty obrázka PO tom, čo bol už raz obalený (typický
+        // lazy-load vzor: placeholder src pri vložení, skutočný src o chvíľu
+        // neskôr). Nevytvára nový wrapper, len upraví ten existujúci.
+        function updateExistingWrapper(img, link) {
+            var srcVal = pickBestSrc(img);
+            if (!srcVal) return;
+            if (!hasAllowedExtension(srcVal)) return;
+            if (link.getAttribute("href") === srcVal) return; // bez zmeny
+
+            link.setAttribute("href", srcVal);
+
+            var rawAlt = img.getAttribute("alt") || img.getAttribute("data-alt") || "";
+            var title = "";
+            if (ALB_CONFIG.showCaption === "alt") {
+                title = rawAlt;
+            } else if (ALB_CONFIG.showCaption === "filename") {
+                var filename = srcVal.split("/").pop().split("?")[0];
+                try { filename = decodeURIComponent(filename); } catch (e) {}
+                filename = filename.replace(/\.[^.]+$/, "").replace(/[_-]/g, " ");
+                title = filename;
+            }
+            if (title) { link.setAttribute("title", title); } else { link.removeAttribute("title"); }
+            if (rawAlt) { link.setAttribute("data-alb-alt", rawAlt); } else { link.removeAttribute("data-alb-alt"); }
+        }
+
         function wrapNewImage(img) {
-            if (img.closest("a")) return; // je skutočne zabalený - hotovo
+            var existingLink = img.closest("a");
+            if (existingLink) {
+                // Ak je to NÁŠ vlastný odkaz (nie cudzí, ktorý mal obrázok
+                // obalený už v pôvodnom obsahu článku), aktualizuj ho podľa
+                // aktuálnych atribútov - lazy-load knižnice bežne najprv
+                // vložia <img> s placeholder src (ktorý sa hneď obalí), a až
+                // neskôr ho prepíšu na skutočný obrázok. Bez tejto aktualizácie
+                // by lightbox navždy otváral zastaraný placeholder namiesto
+                // reálneho obrázka.
+                if (existingLink.classList.contains("alb-link")) {
+                    updateExistingWrapper(img, existingLink);
+                }
+                return;
+            }
 
             // WeakSet je presnejší signál "toto som už spracoval" než atribút
             // data-alb-done - viaže sa na skutočnú referenciu objektu, takže

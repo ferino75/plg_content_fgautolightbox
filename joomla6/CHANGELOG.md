@@ -4,6 +4,38 @@ This changelog covers the **native Joomla 6 build** only (this `joomla6/`
 folder). For the classic Joomla 3.10 build's history, see
 [`../CHANGELOG.md`](../CHANGELOG.md) in the repository root.
 
+## 2.1.1
+**Real bug**, follow-up to 2.1.0, reported by a ChatGPT code review (P1):
+
+- **Stale lightbox link after a lazy-load placeholder is replaced.**
+  2.1.0 added attribute-mutation watching so an `<img>` gaining a
+  `src`/`data-src`/`srcset` value *for the first time* gets wrapped -
+  but it didn't handle the equally common sequence where the image
+  already had a *usable* (if low-quality) `src` at insertion time - a
+  placeholder - got wrapped immediately with that placeholder's URL,
+  and the `WeakSet` "already processed" guard then silently ignored
+  the later attribute change that swapped in the real image. Net
+  result: the lightbox would open the placeholder forever, even though
+  the on-page `<img>` itself correctly showed the real photo.
+- **Fix:** `wrapNewImage()` now distinguishes two cases when it finds
+  an enclosing `<a>` on attribute-change: if that `<a>` is one we
+  created (`alb-link` class), it *updates* the existing wrapper's
+  `href` (and the derived `title`/`data-alb-alt`) to the current best
+  source instead of doing nothing. A pre-existing `<a>` from the
+  article's own content (not ours) is still left completely alone, as
+  before.
+- Verified by first reproducing the exact scenario from the report
+  (image wrapped with a placeholder, then `src` changed to the real
+  image, confirming the `href` incorrectly stayed on the placeholder),
+  then confirming the fix resolves it. Additional cases verified: a
+  foreign (non-`alb-link`) existing wrapper is never touched, `title`/
+  `data-alb-alt` update alongside `href` when the caption depends on
+  `alt` text, repeated attribute changes (not just one) keep updating
+  correctly, and no double-wrapping ever occurs across multiple
+  updates. Full regression of the 2.1.0 attribute-mutation tests,
+  `watch_container` scoping tests, and all 34 isolated Support-class
+  tests confirms no other impact.
+
 ## 2.1.0
 Response to a ChatGPT code review observation, flagged as the most
 interesting gap for a minor release:
