@@ -454,9 +454,12 @@
 
             // Ak je nastavený CSS selektor kontajnera, sleduj len jeho výskyty
             // (výkonovo lacnejšie na stránkach s "živým" DOM mimo obsahu
-            // článku - animácie, chat widgety a pod.). Ak selektor nič
-            // nenájde (napr. preklep v nastavení), použije sa document.body,
-            // aby sledovanie dynamických obrázkov nezostalo potichu vypnuté.
+            // článku - animácie, chat widgety a pod.). Toto obmedzenie platí
+            // VŽDY, keď je watchContainer nastavený - aj keď pri inicializácii
+            // ešte žiadny zodpovedajúci kontajner neexistuje (napr. AJAX ho
+            // vytvorí až neskôr). Skoršia verzia v takom prípade potichu
+            // spadla na sledovanie celého document.body s plnými možnosťami,
+            // čím sa scoping reálne úplne zrušil - opravené nižšie.
             var containers = [];
             if (ALB_CONFIG.watchContainer) {
                 try {
@@ -464,15 +467,73 @@
                         document.querySelectorAll(ALB_CONFIG.watchContainer)
                     );
                 } catch (e) {
-                    containers = []; // neplatný selektor - použije sa fallback nižšie
+                    containers = []; // neplatný selektor - objavovací observer nižšie to prípadne dobehne
                 }
+            } else {
+                containers = [document.body]; // watchContainer vôbec nenastavený - sleduj celú stránku
             }
-            if (!containers.length) {
-                containers = [document.body];
-            }
-            containers.forEach(function(container) {
+
+            var observedContainers = [];
+            function attachMainObserver(container) {
+                if (observedContainers.indexOf(container) !== -1) return;
+                observedContainers.push(container);
                 albObserver.observe(container, observerOptions);
-            });
+            }
+            containers.forEach(attachMainObserver);
+
+            // Ak je nastavený watchContainer, doplnkový "objavovací" observer
+            // sleduje CELÚ stránku (len na úrovni pridávania uzlov, BEZ
+            // sledovania atribútov a bez prehľadávania obrázkov) a keď sa
+            // objaví nový kontajner zodpovedajúci selektoru (napr. AJAX pridá
+            // ".gallery" div, ktorý pri inicializácii ešte neexistoval),
+            // pripojí naň hlavný observer. Beží nezávisle od toho, či niečo
+            // zodpovedalo selektoru už na začiatku - scoping tak platí
+            // konzistentne v oboch prípadoch. Zámerne odľahčené - kontroluje
+            // len zhodu CSS selektora pri pridaní uzla, nerobí nič výkonovo
+            // náročné pri každej mutácii ako hlavný observer.
+            //
+            // Poznámka: ak selektor nikdy nič nenájde (napr. preklep v
+            // nastavení), dynamicky pridané obrázky sa nikdy nezačnú
+            // sledovať - toto je zámerný kompromis v prospech spoľahlivého
+            // scopingu namiesto tichého úplného vypnutia obmedzenia. Obrázky
+            // prítomné už pri vykreslení stránky týmto nie sú dotknuté (tie
+            // spracúva PHP strana nezávisle od tohto nastavenia).
+            if (ALB_CONFIG.watchContainer) {
+                var discoveryObserver = new MutationObserver(function(mutations) {
+                    for (var i = 0; i < mutations.length; i++) {
+                        var added = mutations[i].addedNodes;
+                        for (var j = 0; j < added.length; j++) {
+                            var node = added[j];
+                            if (node.nodeType !== 1) continue;
+
+                            var found = [];
+                            try {
+                                if (node.matches && node.matches(ALB_CONFIG.watchContainer)) {
+                                    found.push(node);
+                                }
+                                if (node.querySelectorAll) {
+                                    found = found.concat(
+                                        Array.prototype.slice.call(node.querySelectorAll(ALB_CONFIG.watchContainer))
+                                    );
+                                }
+                            } catch (e) {
+                                continue;
+                            }
+
+                            found.forEach(function(foundContainer) {
+                                attachMainObserver(foundContainer);
+                                // Ak nový kontajner prišiel s obrázkami už vo vnútri
+                                // (bežné pri AJAX, kde sa celý blok vloží naraz),
+                                // observer pripojený TERAZ by ich sám o sebe nezachytil -
+                                // observe() hlási len budúce zmeny, nie spätne existujúci
+                                // obsah. Preto treba počiatočné prehľadanie navyše.
+                                scanForNewImages(foundContainer);
+                            });
+                        }
+                    }
+                });
+                discoveryObserver.observe(document.body, { childList: true, subtree: true });
+            }
         }
     }
 

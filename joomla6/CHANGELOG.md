@@ -4,6 +4,47 @@ This changelog covers the **native Joomla 6 build** only (this `joomla6/`
 folder). For the classic Joomla 3.10 build's history, see
 [`../CHANGELOG.md`](../CHANGELOG.md) in the repository root.
 
+## 2.1.2
+Response to a ChatGPT code review suggestion ("closes the loop" on
+`watch_container`, not critical but worth doing):
+
+- **Dynamically-created containers matching `watch_container` are now
+  detected too**, not just ones present at page load. Previously, if
+  `watch_container` was set to e.g. `.gallery` and that element didn't
+  exist yet when the page loaded (AJAX creates it later), the plugin
+  had no way to start watching it once it appeared.
+- Added a lightweight "discovery" `MutationObserver` (childList-only,
+  no attribute watching, no image scanning) that watches the whole page
+  for new elements matching the `watch_container` selector. When one
+  appears, the main (heavier) observer is attached to it - and it's
+  also scanned immediately for images already inside it, since
+  `observe()` only reports *future* changes, not content already
+  present at the moment watching starts (relevant when AJAX inserts an
+  entire populated `.gallery` block in one go).
+- **A real regression was found and fixed while implementing this**,
+  through the plugin's own test suite: the *previous* fallback behavior
+  (if `watch_container` matched nothing at all, silently watch the
+  entire `document.body` with full options) turned out to completely
+  defeat scoping the moment nothing matched at page load - even for
+  content that would never belong in any future container. This is
+  **a deliberate behavior change**: `watch_container`'s scoping now
+  holds consistently whether something matches at page load or not,
+  rather than silently reverting to "watch everything" as soon as zero
+  containers exist yet. The tradeoff: if the selector has a typo and
+  never matches anything, ever, dynamically-added images are never
+  tracked (server-rendered images on initial page load are unaffected,
+  since those are handled entirely by PHP regardless of this setting).
+- Verified with automated tests: an image added to a container that
+  didn't exist at page load gets processed once the container appears,
+  a container that arrives already populated with images (one AJAX
+  batch) has all of them processed, and - importantly - an image added
+  outside any `.gallery` (existing or newly discovered) still correctly
+  stays unprocessed even when zero containers existed at page load.
+  This last case is the one that initially failed during testing and
+  led to the behavior-change fix above. Full regression across all
+  prior `watch_container`, attribute-mutation, and stale-wrapper tests,
+  plus all 34 isolated Support-class tests, confirms no other impact.
+
 ## 2.1.1
 **Real bug**, follow-up to 2.1.0, reported by a ChatGPT code review (P1):
 
