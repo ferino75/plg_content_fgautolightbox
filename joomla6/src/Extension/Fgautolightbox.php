@@ -43,9 +43,20 @@ final class Fgautolightbox extends CMSPlugin implements SubscriberInterface
         // zámerný, pragmatický kompromis - tieto triedy sú bezstavové
         // (žiadne Joomla API, žiadne I/O v konštruktore) a Joomla plugin
         // systém sám osebe nepodporuje autowiring pre bežné pluginy mimo
-        // services/provider.php. Skutočný DI benefit je v tom, že
-        // HtmlProcessor aj jeho závislosti sa dajú testovať úplne izolovane
-        // od Joomly (viď tests/).
+        // services/provider.php.
+        //
+        // Presnejšie k DI: samotná trieda Fgautolightbox túto výhodu
+        // nezdedí - stále si SrcSetResolver/ContentScopeResolver/
+        // HtmlProcessor vytvára sama cez `new`, nedostáva ich zvonka. Reálny
+        // benefit sa týka výhradne POMOCNÝCH tried (HtmlProcessor a jeho
+        // závislosti) - tie majú nulové Joomla API, takže sa dajú
+        // inštanciovať a testovať úplne izolovane, bez Joomla bootstrapu
+        // alebo stubovania (overované počas vývoja automatizovanými testami,
+        // ktoré nie sú súčasťou tohto inštalovaného balíka). Plná
+        // constructor DI aj pre samotný plugin (injektovanie cez
+        // services/provider.php namiesto `new` volaní tu) by bola možná,
+        // ale pre rozsah tohto pluginu zámerne netreba komplikovať
+        // architektúru len kvôli tomu.
         //
         // Používa $this->params (Registry, korektne naparsovaný Joomla
         // rodičovským konštruktorom vyššie), nie surové $config['params'] -
@@ -201,7 +212,23 @@ final class Fgautolightbox extends CMSPlugin implements SubscriberInterface
         // administrácie, ktorú upravuje dôveryhodný administrátor, nie z
         // nedôveryhodného vstupu) - zabránia tomu, aby hodnota z nastavení
         // mohla vytvoriť sekvenciu ako </script> v <script> kontexte.
-        $configJson = json_encode($config, \JSON_HEX_TAG | \JSON_HEX_AMP | \JSON_HEX_APOS | \JSON_HEX_QUOT);
+        //
+        // JSON_THROW_ON_ERROR: $config obsahuje len jednoduché stringy/booly/
+        // pole reťazcov poskladané z Joomla nastavení, takže zlyhanie
+        // json_encode() je v praxi prakticky vylúčené - ide o čisto obrannú
+        // vrstvu. Pri (extrémne nepravdepodobnom) zlyhaní sa použije prázdny
+        // objekt namiesto vyrenderovania nedokončeného/poškodeného JS - JS
+        // engine má vlastné predvolené hodnoty pre každú položku configu, takže
+        // s prázdnym objektom naďalej funguje korektne (len s predvolenými
+        // nastaveniami namiesto tých z administrácie).
+        try {
+            $configJson = json_encode(
+                $config,
+                \JSON_HEX_TAG | \JSON_HEX_AMP | \JSON_HEX_APOS | \JSON_HEX_QUOT | \JSON_THROW_ON_ERROR,
+            );
+        } catch (\JsonException) {
+            $configJson = '{}';
+        }
         $wa->addInlineScript(
             'window.FG_AUTOLIGHTBOX_CONFIG = ' . $configJson . ';',
             [],

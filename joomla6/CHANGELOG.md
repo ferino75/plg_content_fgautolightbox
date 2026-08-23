@@ -4,6 +4,53 @@ This changelog covers the **native Joomla 6 build** only (this `joomla6/`
 folder). For the classic Joomla 3.10 build's history, see
 [`../CHANGELOG.md`](../CHANGELOG.md) in the repository root.
 
+## 2.1.7
+Three small items from a ChatGPT code review, bundled into one release:
+
+**Comment accuracy (no functional change)**
+- Corrected an overstated comment in the constructor. It previously read
+  as if constructor DI's testability benefit applied to the plugin
+  class itself. In reality, `Fgautolightbox` still constructs
+  `SrcSetResolver`/`ContentScopeResolver`/`HtmlProcessor` itself via
+  `new` rather than receiving them injected - the isolated-testability
+  benefit is real, but it applies specifically to those Support classes
+  (zero Joomla API surface), not to the plugin's own DI story. Also
+  removed a stray reference to a `tests/` directory that doesn't
+  actually exist in the shipped package.
+
+**`JSON_THROW_ON_ERROR` with a graceful fallback (P3, defensive
+hardening)**
+- The inline config `json_encode()` call now also passes
+  `JSON_THROW_ON_ERROR`, wrapped in a `try`/`catch`. `$config` only ever
+  contains simple strings/booleans/arrays built from Joomla settings, so
+  an encoding failure is practically impossible - this is a pure
+  defensive layer. On the (extremely unlikely) failure, an empty `{}`
+  object is used instead of rendering broken/truncated JavaScript - the
+  JS engine's own built-in defaults already handle a missing or empty
+  config gracefully, so the lightbox keeps working with default
+  settings rather than the page breaking.
+
+**Cheap early-exit before `DOMDocument` (P2, measured performance win)**
+- `HtmlProcessor::wrapImages()` now checks `stripos($html, '<img') ===
+  false` and returns the content unchanged *before* constructing
+  `DOMDocument`/`DOMXPath` - by far the most expensive operation the
+  plugin performs. Pages or articles with zero images (plain text
+  content) now skip DOM parsing entirely. `<picture>` elements are
+  safely covered too, since a `<picture>` is only valid HTML5 with an
+  `<img>` as a direct child - there's no case where an image is present
+  via `<picture>` alone without an `<img>` tag.
+
+Verified with automated tests: the comment change was confirmed to only
+touch comment lines (diffed against the previous version); a genuinely
+invalid UTF-8 payload correctly triggers `JsonException`, is caught, and
+falls back to a valid, decodable `{}`; and the early-exit correctly
+returns text-only content completely unchanged (including a
+case-insensitive check for `<IMG>`), while still processing ordinary
+images normally - measured at roughly **30× faster** on image-free
+content (5.48ms vs. 165.53ms across 200 iterations of a large text-only
+block). Full regression across all 34 isolated Support-class tests and
+the i18n/labels integration test confirms no other impact.
+
 ## 2.1.6
 Response to two related ChatGPT code review points about manifest/update
 server safety (P1):

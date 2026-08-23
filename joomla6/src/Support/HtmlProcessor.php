@@ -44,6 +44,17 @@ final class HtmlProcessor
         int &$wrappedCount = 0,
     ): string {
         $wrappedCount = 0;
+
+        // Lacný early-exit pred najdrahšou operáciou pluginu (DOMDocument +
+        // DOMXPath). Stránky/články bez jediného <img> - napr. čisto textové
+        // - tak vôbec nevytvoria DOM parser. Case-insensitive (stripos), keďže
+        // HTML značky nerozlišujú veľkosť písmen. <picture> vždy vyžaduje <img>
+        // ako priameho potomka (inak by nebol platný podľa HTML5 špecifikácie),
+        // takže táto kontrola bezpečne pokrýva aj obrázky v <picture>.
+        if (stripos($html, '<img') === false) {
+            return $html;
+        }
+
         $galleryGroup = $instanceKey !== '' ? $galleryGroupBase . ':' . $instanceKey : $galleryGroupBase;
 
         $dom = new \DOMDocument('1.0', 'UTF-8');
