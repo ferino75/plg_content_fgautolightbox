@@ -185,6 +185,7 @@ final class Fgautolightbox extends CMSPlugin implements SubscriberInterface
                 'close' => Text::_('PLG_CONTENT_FGAUTOLIGHTBOX_JS_CLOSE_LABEL'),
                 'previous' => Text::_('PLG_CONTENT_FGAUTOLIGHTBOX_JS_PREV_LABEL'),
                 'next' => Text::_('PLG_CONTENT_FGAUTOLIGHTBOX_JS_NEXT_LABEL'),
+                'error' => Text::_('PLG_CONTENT_FGAUTOLIGHTBOX_JS_ERROR_LABEL'),
             ],
         ];
 

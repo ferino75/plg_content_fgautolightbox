@@ -4,6 +4,44 @@ This changelog covers the **native Joomla 6 build** only (this `joomla6/`
 folder). For the classic Joomla 3.10 build's history, see
 [`../CHANGELOG.md`](../CHANGELOG.md) in the repository root.
 
+## 2.2.1
+Response to a Grok AI code review (P1, real bugs):
+
+**A broken image stayed "loading" forever**
+- No `onerror` handler existed - if an image URL 404'd or otherwise
+  failed to load, `#alb-img` stayed at `opacity:0.25` (the "loading"
+  state) indefinitely, with no feedback to the visitor.
+- Fixed with a proper `onerror` handler: the broken-image icon is
+  hidden, and a new, translatable error message ("Failed to load
+  image" / "Obrázok sa nepodarilo načítať") is shown in a new
+  `#alb-error` element. The error state is cleared automatically at
+  the start of every `show()` call, so navigating away from a broken
+  image doesn't leave the message stuck on-screen.
+
+**Race condition on rapid navigation**
+- Reported scenario: pressing next/prev rapidly could leave a stale
+  `onload`/`onerror` handler from an earlier, superseded `show()` call
+  able to affect the *current* image's loading state.
+- Fixed with a generation counter: each `show()` call increments a
+  counter and captures its own value in a closure; the `onload`/
+  `onerror` handlers check that value against the current counter
+  before doing anything, so a handler from an outdated navigation
+  step is a guaranteed no-op regardless of when the browser actually
+  fires it.
+- New `error` label added to the existing translatable labels
+  mechanism (2.1.3), following the same pattern - resolved via
+  `Text::_()` on the PHP side, merged key-by-key on the JS side with
+  an English fallback.
+
+Verified with automated tests: a successful load still clears the
+loading state exactly as before, a failed load shows the error message
+and clears loading, navigating to another image clears any lingering
+error state, and - reproducing the race directly - a captured stale
+`onload` handler manually invoked *after* a subsequent `show()` call is
+confirmed to have zero effect on the current (newer) loading state.
+Full regression across all previously available tests (PHP and JS
+combined) confirms no other impact.
+
 ## 2.2.0
 Two items from a Grok AI code review, bundled into a minor version
 (new setting + a real behavior change to the loading pipeline):

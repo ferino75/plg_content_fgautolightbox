@@ -30,7 +30,8 @@
             dialog: "Image gallery",
             close: "Close",
             previous: "Previous image",
-            next: "Next image"
+            next: "Next image",
+            error: "Failed to load image"
         }
     };
 
@@ -62,7 +63,8 @@
             dialog: userLabels.dialog || DEFAULTS.labels.dialog,
             close: userLabels.close || DEFAULTS.labels.close,
             previous: userLabels.previous || DEFAULTS.labels.previous,
-            next: userLabels.next || DEFAULTS.labels.next
+            next: userLabels.next || DEFAULTS.labels.next,
+            error: userLabels.error || DEFAULTS.labels.error
         };
 
         var overlay = document.createElement("div");
@@ -76,14 +78,16 @@
         overlay.innerHTML =
             '<button type="button" id="alb-close" aria-label="' + escapeHtmlAttr(ALB_CONFIG.labels.close) + '">&times;</button>' +
             '<button type="button" id="alb-prev" aria-label="' + escapeHtmlAttr(ALB_CONFIG.labels.previous) + '">&#8249;</button>' +
-            '<div id="alb-wrap"><img id="alb-img" src="" alt=""/><div id="alb-caption"></div></div>' +
+            '<div id="alb-wrap"><img id="alb-img" src="" alt=""/><div id="alb-error"></div><div id="alb-caption"></div></div>' +
             '<button type="button" id="alb-next" aria-label="' + escapeHtmlAttr(ALB_CONFIG.labels.next) + '">&#8250;</button>' +
             '<span id="alb-counter"></span>';
         document.body.appendChild(overlay);
 
         var items = [], current = 0;
+        var loadGeneration = 0;
         var ovEl = overlay, imgEl = document.getElementById("alb-img");
         var capEl = document.getElementById("alb-caption");
+        var errEl = document.getElementById("alb-error");
         var cntEl = document.getElementById("alb-counter");
         var closeBtn = document.getElementById("alb-close");
         var prevBtn = document.getElementById("alb-prev");
@@ -143,8 +147,33 @@
         }
 
         function show() {
+            // Generation counter proti race condition pri rýchlom prechádzaní
+            // (napr. viacero stlačení šípky skôr, než sa stihne predchádzajúci
+            // obrázok načítať/zlyhať). Každé volanie show() zvýši counter a
+            // handler si "svoju" hodnotu zapamätá - ak sa medzitým spustilo
+            // ďalšie show() (napr. používateľ klikol ešte raz), starý
+            // onload/onerror sa už nemá čo diať (je pre obrázok, ktorý už
+            // nie je aktuálny).
+            loadGeneration++;
+            var myGeneration = loadGeneration;
+
+            imgEl.classList.remove("alb-error");
             imgEl.classList.add("alb-loading");
-            imgEl.onload = function() { imgEl.classList.remove("alb-loading"); };
+            errEl.classList.remove("alb-visible-error");
+            errEl.textContent = "";
+
+            imgEl.onload = function() {
+                if (myGeneration !== loadGeneration) return;
+                imgEl.classList.remove("alb-loading");
+            };
+            imgEl.onerror = function() {
+                if (myGeneration !== loadGeneration) return;
+                imgEl.classList.remove("alb-loading");
+                imgEl.classList.add("alb-error");
+                errEl.textContent = ALB_CONFIG.labels.error;
+                errEl.classList.add("alb-visible-error");
+            };
+
             // src sa nastavuje VŽDY (aj keď je aj srcset) - slúži ako záloha
             // pre prehliadače bez podpory srcset a je to hodnota, ktorú by
             // dostal aj používateľ so zakázaným JS (href na <a>). Keď je

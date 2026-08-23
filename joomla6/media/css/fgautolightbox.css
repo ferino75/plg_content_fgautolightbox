@@ -47,6 +47,15 @@
     transition:opacity 0.18s ease;
 }
 #alb-img.alb-loading { opacity:0.25; }
+/* Pri chybe načítania skryť rozbitú ikonu prehliadača (a zvyškovú
+   priehľadnosť z alb-loading) - samotná chybová správa je v #alb-error. */
+#alb-img.alb-error { opacity:0; }
+#alb-error {
+    color:var(--alb-caption-color); font-size:var(--alb-caption-size);
+    text-align:center; padding:24px 10px;
+    display:none;
+}
+#alb-error.alb-visible-error { display:block; }
 @media (min-width:600px) {
     #alb-wrap { width:92vw; }
     #alb-img { max-width:88vw; max-height:82vh; box-shadow:0 4px 40px rgba(0,0,0,0.6); }
