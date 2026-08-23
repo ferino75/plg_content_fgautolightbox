@@ -4,6 +4,35 @@ This changelog covers the **native Joomla 6 build** only (this `joomla6/`
 folder). For the classic Joomla 3.10 build's history, see
 [`../CHANGELOG.md`](../CHANGELOG.md) in the repository root.
 
+## 2.3.2
+**Real bug, reported directly from the live site right after 2.3.1**:
+the "Watch for dynamically added images" dropdown still showed "Yes
+(default)" even though 2.3.0 changed the actual default to off.
+
+- **Root cause**: the option label text is a static, hand-written
+  language string, not something Joomla derives automatically from the
+  field's `default` attribute. When `watch_dynamic`'s default was
+  changed from `1` to `0` in 2.3.0, the manifest's `default` attribute
+  and the `<option>` order were updated correctly, but the *visible
+  label wording* ("(default)") was left attached to "Yes" instead of
+  being moved to "No" - purely a leftover from the earlier default,
+  never corrected.
+- **Fixed** by moving "(default)" to the "No" option in both languages.
+  Cross-checked every other list-type field with a similar "(default)"
+  label (`caption_mobile`, `prefer_srcset`, `show_navigation`,
+  `preload_adjacent`) against its actual XML `default` attribute -
+  confirmed `watch_dynamic` was the only mismatch, since it's the only
+  one of these whose default value has ever changed after being
+  shipped.
+- **Separate, important note for anyone upgrading from before 2.3.0**:
+  if a site had already saved this plugin's settings prior to
+  upgrading (even just once), Joomla keeps that saved value in the
+  database - the new XML default only applies to installs that have
+  never explicitly saved a value. Changing the manifest's default does
+  not retroactively change an already-stored "on" setting; if dynamic
+  watching should actually be turned off going forward, the dropdown
+  needs to be explicitly switched and saved.
+
 ## 2.3.1
 **Real regression, reported directly from a live site**: since 2.2.4,
 the plugin's admin settings screen displayed with a visually broken
