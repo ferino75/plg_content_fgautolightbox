@@ -16,7 +16,7 @@
         excludeClasses: [],
         showCaption: "alt",
         captionMobile: false,
-        watchDynamic: true,
+        watchDynamic: false,
         watchContainer: "",
         showNavigation: true,
         preloadAdjacent: true,

@@ -139,7 +139,7 @@ final class Fgautolightbox extends CMSPlugin implements SubscriberInterface
         // ak je watch_dynamic zapnuté, JS engine (MutationObserver) treba
         // načítať aj tak, keďže obrázky sa môžu objaviť neskôr dynamicky
         // (AJAX), aj keď pri prvom vykreslení stránky ešte žiadne nie sú.
-        $watchDynamic = (bool) (int) $this->params->get('watch_dynamic', 1);
+        $watchDynamic = (bool) (int) $this->params->get('watch_dynamic', 0);
         if ($wrappedCount > 0 || $watchDynamic) {
             $this->ensureAssetsLoaded();
         }
@@ -166,7 +166,7 @@ final class Fgautolightbox extends CMSPlugin implements SubscriberInterface
             'excludeClasses' => $this->csvList((string) $this->params->get('exclude_classes', '')),
             'showCaption' => (string) $this->params->get('show_caption', 'alt'),
             'captionMobile' => (bool) (int) $this->params->get('caption_mobile', 0),
-            'watchDynamic' => (bool) (int) $this->params->get('watch_dynamic', 1),
+            'watchDynamic' => (bool) (int) $this->params->get('watch_dynamic', 0),
             'showNavigation' => (bool) (int) $this->params->get('show_navigation', 1),
             'preloadAdjacent' => (bool) (int) $this->params->get('preload_adjacent', 1),
             'watchContainer' => trim((string) $this->params->get('watch_container', '')),

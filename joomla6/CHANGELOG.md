@@ -4,6 +4,56 @@ This changelog covers the **native Joomla 6 build** only (this `joomla6/`
 folder). For the classic Joomla 3.10 build's history, see
 [`../CHANGELOG.md`](../CHANGELOG.md) in the repository root.
 
+## 2.3.0
+Response to a Grok AI code review (P2, real ongoing performance cost -
+**default behavior change, please read**).
+
+**⚠ If your site relies on images being added to the page dynamically
+after it loads (AJAX, infinite scroll, sliders, lazy-loaded galleries),
+check that "Watch for dynamically added images" is explicitly enabled
+after upgrading to this version - it is no longer on by default.**
+
+- **`watch_dynamic` now defaults to off**, not on. A `MutationObserver`
+  watching `childList + subtree + attributes` across the whole page
+  isn't free - on pages with a lot of unrelated DOM activity
+  (animations, chat widgets, cookie consent banners), it adds a small
+  but real ongoing cost, for a feature most ordinary articles/blogs
+  with no dynamically-loaded images never actually use. Static images
+  (present when the page loads, handled entirely server-side by PHP)
+  are completely unaffected by this setting either way.
+- Considered and deliberately **not** implemented: automatically
+  turning `watch_dynamic` on whenever `watch_container` has a value
+  set. Joomla plugin parameters can't reliably distinguish "the
+  administrator explicitly set this to 0" from "never touched, this is
+  just the default" - any auto-on logic built on that distinction would
+  be fragile. A plain default change is simpler and more predictable.
+- Field descriptions for both `watch_dynamic` and `watch_container`
+  updated in both languages to cross-reference each other and explain
+  when to turn dynamic watching on.
+- Changed in all three places the default is read: the manifest field
+  default, the PHP fallback in both places `watch_dynamic` is read, and
+  the JS `DEFAULTS` object (the safety-net fallback used if the config
+  sent from PHP is ever missing this key for any reason).
+- Explicit opt-in (`watch_dynamic=1`) continues to work exactly as
+  before - verified with automated tests confirming the setting's
+  *presence and effect*, not just its default value, is unchanged.
+- Verified with automated tests: with no explicit setting, dynamically
+  added images are no longer picked up and the conditional-asset-
+  loading optimization from 2.0.5 no longer loads assets for image-free
+  content by default either (since that logic also depends on
+  `watch_dynamic`); explicitly enabling the setting restores the exact
+  previous behavior in both respects. A significant number of existing
+  tests across the whole suite (PHP and JS) implicitly relied on the
+  old default to exercise `MutationObserver`-dependent features
+  (dynamic image discovery, `watch_container` scoping, editor-link
+  upgrades on dynamic content, and more) - all of these were updated to
+  explicitly enable `watch_dynamic` in their test setup, since they are
+  specifically testing functionality that requires it; this was
+  expected and is not a functional regression, just tests catching up
+  to the new default they no longer get for free. Full regression
+  confirms zero unexpected failures across the entire test suite once
+  updated.
+
 ## 2.2.4
 Response to a Grok AI code review (P1, real editor UX expectation):
 

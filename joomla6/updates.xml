@@ -7,12 +7,12 @@
         <type>plugin</type>
         <folder>content</folder>
         <client>site</client>
-        <version>2.2.4</version>
+        <version>2.3.0</version>
         <infourl title="Content - FG AutoLightbox (Joomla 6)">https://github.com/ferino75/plg_content_fgautolightbox/tree/master/joomla6</infourl>
         <targetplatform name="joomla" version="6\.[0-9]+\.[0-9]+"/>
         <php_minimum>8.3</php_minimum>
         <downloads>
-            <downloadurl type="full" format="zip">https://github.com/ferino75/plg_content_fgautolightbox/releases/download/v2.2.4/plg_content_fgautolightbox_v2.2.4_j6x.zip</downloadurl>
+            <downloadurl type="full" format="zip">https://github.com/ferino75/plg_content_fgautolightbox/releases/download/v2.3.0/plg_content_fgautolightbox_v2.3.0_j6x.zip</downloadurl>
         </downloads>
         <tags>
             <tag>stable</tag>
