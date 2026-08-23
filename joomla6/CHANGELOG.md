@@ -4,6 +4,47 @@ This changelog covers the **native Joomla 6 build** only (this `joomla6/`
 folder). For the classic Joomla 3.10 build's history, see
 [`../CHANGELOG.md`](../CHANGELOG.md) in the repository root.
 
+## 2.3.7
+Item 8 from a broader Grok AI review of smaller improvements ("Menšie,
+ale oplatí sa to") - real mobile usability bug.
+
+- **Pinch-zoom on the displayed image was silently blocked.** The swipe
+  handler's `touchmove` listener called `preventDefault()` whenever the
+  first touch point's horizontal movement exceeded its vertical
+  movement - but it never checked how many fingers were actually
+  touching the screen. During a genuine two-finger pinch-zoom gesture,
+  the *first* finger commonly drifts slightly more horizontally than
+  vertically as a natural side effect of the pinch motion, which was
+  enough to trigger `preventDefault()` and block the browser's native
+  pinch-zoom entirely - on an image lightbox, exactly the one place
+  visitors most want to be able to zoom in.
+- Also missing: any minimum movement threshold before treating a touch
+  as a horizontal swipe at all, meaning even a 1-2px hand-tremor jitter
+  right at the start of any touch (including the very beginning of a
+  vertical scroll) could prematurely trigger `preventDefault()`.
+- **Fixed both issues:**
+  1. `touchstart` and `touchmove` now check `e.touches.length` - if more
+     than one finger is touching (a pinch-zoom gesture, whether it
+     started that way or a second finger joined mid-gesture),
+     `preventDefault()` is never called and the browser handles the
+     gesture natively.
+  2. A minimum threshold (`SWIPE_THRESHOLD = 10px`) is now required
+     before a horizontal-dominant single-finger movement is treated as
+     an intentional swipe worth intercepting.
+- Verified with automated tests simulating real multi-touch event
+  sequences: a genuine single-finger horizontal swipe above the
+  threshold still correctly calls `preventDefault()`; small
+  below-threshold jitter does not; a two-finger pinch present from the
+  very start of the gesture never calls `preventDefault()`, even with
+  a horizontally-drifting first finger; a second finger joining
+  *mid-gesture* (starting as a single-finger touch, transitioning to
+  pinch) correctly stops any further `preventDefault()` calls; a pure
+  vertical single-finger scroll is never blocked; and - a functional
+  regression check - an actual completed swipe gesture (past the
+  existing 50px navigation threshold) still correctly advances to the
+  next image exactly as before. Full regression across the entire JS
+  test suite confirms no other impact.
+
 ## 2.3.6
 Items 9 and 11 from a broader Grok AI review of smaller improvements
 ("Menšie, ale oplatí sa to"). Item 10 (language file prefix) skipped

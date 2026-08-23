@@ -323,14 +323,22 @@
             }
         });
 
-        // Swipe - preventDefault len keď gesto smeruje prevažne horizontálne,
-        // aby sa neblokovalo prípadné vertikálne scrollovanie/pinch-zoom.
+        // Swipe - preventDefault len keď gesto smeruje prevažne horizontálne
+        // A prekročilo minimálny prah pohybu, aby sa neblokovalo prípadné
+        // vertikálne scrollovanie ani pinch-zoom. Dôležité: pinch-zoom je
+        // DVOJPRSTOVÉ gesto (e.touches.length > 1) - pri ňom sa prvý prst
+        // (e.touches[0]) bežne pohybuje aj mierne horizontálne, takže bez
+        // tejto kontroly by preventDefault() natívne priblíženie zablokoval.
+        var SWIPE_THRESHOLD = 10;
         var sx = 0, sy = 0, sa = false;
-        ovEl.addEventListener("touchstart", function(e) { var t = e.touches[0]; sx = t.clientX; sy = t.clientY; sa = true; });
+        ovEl.addEventListener("touchstart", function(e) {
+            if (e.touches.length > 1) { sa = false; return; } // pinch-zoom start - nezasahovat
+            var t = e.touches[0]; sx = t.clientX; sy = t.clientY; sa = true;
+        });
         ovEl.addEventListener("touchmove", function(e) {
-            if (!sa) return;
+            if (!sa || e.touches.length > 1) return; // druhy prst sa pridal medzitym - nezasahovat
             var t = e.touches[0], dx = t.clientX - sx, dy = t.clientY - sy;
-            if (Math.abs(dx) > Math.abs(dy)) {
+            if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > SWIPE_THRESHOLD) {
                 e.preventDefault();
             }
         }, { passive: false });
