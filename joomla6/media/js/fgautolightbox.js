@@ -138,6 +138,17 @@
             capEl.textContent = items[current].title;
             capEl.style.display = hasCaption ? "" : "none";
 
+            // Prepojí obrázok s jeho popiskom pre čítačky obrazovky - len keď
+            // je popisok skutočne zobrazený (nemá zmysel odkazovať na prázdny/
+            // skrytý element). Nezávisí od imgEl.alt - alt je krátky
+            // "accessible name" obrázka, aria-describedby dopĺňa dlhší
+            // kontextový popis, ktorý sa mení pri každej navigácii v galérii.
+            if (hasCaption) {
+                imgEl.setAttribute("aria-describedby", "alb-caption");
+            } else {
+                imgEl.removeAttribute("aria-describedby");
+            }
+
             // showNavigation=false -> lightbox funguje ako jednoduchý prehliadač
             // jedného obrázka (žiadne šípky, počítadlo, klávesnica ani swipe
             // medzi obrázkami - viď aj keydown a touchend nižšie).

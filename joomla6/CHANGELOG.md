@@ -4,6 +4,28 @@ This changelog covers the **native Joomla 6 build** only (this `joomla6/`
 folder). For the classic Joomla 3.10 build's history, see
 [`../CHANGELOG.md`](../CHANGELOG.md) in the repository root.
 
+## 2.1.4
+Response to a ChatGPT code review suggestion (accessibility, not
+required for functionality):
+
+- **`#alb-img` is now linked to `#alb-caption` via `aria-describedby`**
+  whenever a caption is actually shown for the current image - lets
+  screen readers announce the caption as a description of the image,
+  in addition to its `alt` text (which was already set correctly).
+  The attribute is added/removed dynamically as the visitor navigates
+  between images with and without a caption, rather than pointing at
+  a caption element that might be empty or hidden.
+- `aria-labelledby` on the dialog itself was deliberately **not**
+  added - the overlay already has a static, translated `aria-label`
+  (from 2.1.3) providing its accessible name, and ARIA only needs one
+  of the two; adding both would be redundant.
+- Verified with automated tests: the attribute is present when the
+  current image has a caption, absent when it doesn't, and correctly
+  re-added when navigating back to a captioned image after visiting an
+  uncaptioned one. Full regression across the label/i18n tests, the
+  stale-wrapper-update test, and all 34 isolated Support-class tests
+  confirms no other impact.
+
 ## 2.1.3
 Response to a ChatGPT code review observation (P1 for accessibility):
 
