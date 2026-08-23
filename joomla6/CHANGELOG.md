@@ -4,6 +4,48 @@ This changelog covers the **native Joomla 6 build** only (this `joomla6/`
 folder). For the classic Joomla 3.10 build's history, see
 [`../CHANGELOG.md`](../CHANGELOG.md) in the repository root.
 
+## 2.2.3
+Response to a Grok AI code review (P1, real false-positive risk),
+revisiting a point ChatGPT had also raised earlier (where the decision
+at the time was to leave it as pure substring matching, since it wasn't
+a reported bug) - now implemented with a lower-risk approach than the
+full mode-picker considered back then.
+
+- **`exclude_urls` matched as a substring anywhere**, meaning `/12`
+  would also match `/120`, `/1129`, or a query string like `?id=120` -
+  and `task=edit` could match unrelated URLs containing that exact
+  text as part of a longer word (e.g. `mytask=editorial`).
+- **Fixed with word-boundary-aware matching as the new default**: a
+  pattern only matches when it isn't touching another alphanumeric
+  character on either side - so `/12` now matches `/12` and
+  `/path/12`, but not `/120` or `/1129`. The boundary check only
+  applies on the side(s) where the pattern's own edge character is
+  itself alphanumeric - a pattern already starting or ending with a
+  delimiter like `/` doesn't need a redundant one added, which is what
+  correctly allows `/12` to still match at the end of a longer path
+  like `/some/article/12`.
+- **A real bug in this exact logic was found and fixed while testing**:
+  the first implementation attempt incorrectly required a boundary
+  character immediately before the *entire* pattern text even when the
+  pattern itself already started with a delimiter (`/`), which broke
+  matching the deliberately-supported case above - caught by the test
+  suite before release, not after.
+- **A `*` wildcard is available as an explicit opt-in** for cases where
+  broader, deliberate substring matching is wanted (e.g. `/kontakt*`
+  also matches `/kontakt-us` or `/kontakty`). Full regex was
+  deliberately not added, to keep the setting simple and safe for a
+  non-technical administrator - matching Grok's own stated preference.
+- Field description updated in both languages to explain the new
+  default and the wildcard syntax.
+- Verified with 18 automated tests covering the exact reported
+  scenarios (`/12` vs. `/120`/`/1129`, `task=edit` vs.
+  `mytask=editorial`), the wildcard opt-in, query-string ID matching,
+  case-insensitivity (unchanged from before), and an end-to-end test
+  through the full `onContentPrepare` flow confirming a page that was
+  incorrectly excluded before (`/120` matching `exclude_urls: /12`) is
+  now correctly processed. Full regression across all previously
+  available tests confirms no other impact.
+
 ## 2.2.2
 Response to a Grok AI code review (P1, real bug on iOS Safari):
 

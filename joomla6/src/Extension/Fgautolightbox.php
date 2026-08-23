@@ -277,11 +277,61 @@ final class Fgautolightbox extends CMSPlugin implements SubscriberInterface
         $currentUri = Uri::getInstance()->toString(['path', 'query']);
 
         foreach ($patterns as $pattern) {
-            if (mb_stripos($currentUri, $pattern) !== false) {
+            if ($this->urlPatternMatches($currentUri, $pattern)) {
                 return true;
             }
         }
 
         return false;
+    }
+
+    /**
+     * Predtým čistý "podreťazec kdekoľvek" (mb_stripos), čo malo problém:
+     * vzor "/12" zachytil aj "/120", "/1129", alebo "?id=12X" - čokoľvek,
+     * kde sa "12" vyskytlo ako súčasť dlhšieho tokenu, nie len samostatne.
+     *
+     * Predvolené správanie teraz rešpektuje hranice - vzor sa musí
+     * vyskytovať tak, že bezprostredne pred/za ním NIE JE alfanumerický
+     * znak (teda je ohraničený napr. "/", "?", "&", "=", "." alebo
+     * začiatkom/koncom URL). To rieši presne uvedený prípad bez toho, aby
+     * bolo treba čokoľvek meniť na existujúcich vzoroch, ktoré už
+     * fungovali správne.
+     *
+     * Ak niekto zámerne chce pôvodné "substring kdekoľvek" správanie
+     * (napr. zachytiť viacero podobných URL naraz), môže použiť "*" ako
+     * jednoduchý glob wildcard (napr. "/kontakt*" zachytí aj "/kontakt-
+     * nas-tim", "/kontakty" atď.) - plnohodnotný regex zámerne nie je
+     * podporovaný, aby nastavenie zostalo jednoduché a bezpečné aj pre
+     * netechnického administrátora.
+     */
+    private function urlPatternMatches(string $currentUri, string $pattern): bool
+    {
+        if ($pattern === '') {
+            return false;
+        }
+
+        if (str_contains($pattern, '*')) {
+            $regex = '#' . str_replace('\*', '.*', preg_quote($pattern, '#')) . '#iu';
+
+            return preg_match($regex, $currentUri) === 1;
+        }
+
+        // Hraničná kontrola sa aplikuje LEN na tej strane vzoru, kde je jeho
+        // vlastný okrajový znak alfanumerický. Ak vzor už sám začína/končí
+        // oddeľovačom (napr. "/12" začína "/"), netreba vyžadovať ešte
+        // JEDEN oddeľovač navyše pred ním - to by naopak nesprávne odmietlo
+        // legitímne prípady ako ".../nieco/12" (kde "/" z "12" je tá istá
+        // hranica, nie duplicitná).
+        $quoted = preg_quote($pattern, '#');
+        $startsAlnum = preg_match('/^[A-Za-z0-9_]/', $pattern) === 1;
+        $endsAlnum = preg_match('/[A-Za-z0-9_]$/', $pattern) === 1;
+
+        $regex = '#'
+            . ($startsAlnum ? '(?<![A-Za-z0-9_])' : '')
+            . $quoted
+            . ($endsAlnum ? '(?![A-Za-z0-9_])' : '')
+            . '#iu';
+
+        return preg_match($regex, $currentUri) === 1;
     }
 }
