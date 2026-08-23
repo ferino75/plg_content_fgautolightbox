@@ -88,6 +88,7 @@
         var prevBtn = document.getElementById("alb-prev");
         var nextBtn = document.getElementById("alb-next");
         var lastFocusedEl = null;
+        var previousBodyOverflow = "";
 
         function open(clickedEl) {
             // Zoskup iba obrázky so ZHODNÝM "rel" atribútom ako kliknutý odkaz
@@ -112,6 +113,11 @@
             lastFocusedEl = document.activeElement;
             show();
             ovEl.classList.add("alb-open");
+            // Ulož pôvodnú hodnotu namiesto natvrdo nastaveného "" pri zatvorení -
+            // šablóna alebo iný plugin mohli mať vlastné overflow nastavenie
+            // (napr. "auto", alebo aj "hidden" z úplne iného dôvodu), ktoré by
+            // sa inak po zatvorení lightboxu potichu zmazalo.
+            previousBodyOverflow = document.body.style.overflow;
             document.body.style.overflow = "hidden";
             setTimeout(function() {
                 ovEl.classList.add("alb-visible");
@@ -121,7 +127,7 @@
 
         function close() {
             ovEl.classList.remove("alb-visible");
-            document.body.style.overflow = "";
+            document.body.style.overflow = previousBodyOverflow;
             setTimeout(function() { ovEl.classList.remove("alb-open"); imgEl.src = ""; }, 320);
             if (lastFocusedEl && typeof lastFocusedEl.focus === "function") {
                 lastFocusedEl.focus();

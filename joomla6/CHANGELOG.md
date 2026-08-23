@@ -4,6 +4,26 @@ This changelog covers the **native Joomla 6 build** only (this `joomla6/`
 folder). For the classic Joomla 3.10 build's history, see
 [`../CHANGELOG.md`](../CHANGELOG.md) in the repository root.
 
+## 2.1.5
+Response to a ChatGPT code review observation (P2, clean small fix):
+
+- **Body scroll lock now preserves the template's/another plugin's
+  pre-existing `overflow` value** instead of unconditionally resetting
+  it to an empty string on close. Previously, opening the lightbox set
+  `document.body.style.overflow = "hidden"` and closing it always reset
+  it to `""` - silently discarding whatever value was there before
+  (e.g. a template with its own `body { overflow: hidden }` for
+  unrelated reasons, or another plugin managing scroll state). The
+  value present at the moment the lightbox opens is now saved and
+  restored exactly on close, whatever it was.
+- Verified with automated tests: a pre-existing `"auto"` value is
+  correctly restored (not wiped to `""`), the original no-prior-value
+  behavior (`""`) still works exactly as before, and repeated open/
+  close cycles preserve a non-default value (`"scroll"`) consistently
+  without drifting. Full regression across the aria-describedby,
+  i18n-labels, and all 34 isolated Support-class tests confirms no
+  other impact.
+
 ## 2.1.4
 Response to a ChatGPT code review suggestion (accessibility, not
 required for functionality):
