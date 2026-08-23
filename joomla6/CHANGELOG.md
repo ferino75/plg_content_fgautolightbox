@@ -4,6 +4,42 @@ This changelog covers the **native Joomla 6 build** only (this `joomla6/`
 folder). For the classic Joomla 3.10 build's history, see
 [`../CHANGELOG.md`](../CHANGELOG.md) in the repository root.
 
+## 2.3.1
+**Real regression, reported directly from a live site**: since 2.2.4,
+the plugin's admin settings screen displayed with a visually broken
+field layout (fields packed inconsistently multiple-per-row instead of
+one clean field per row), and a third-party plugin's tab injection
+(the Params Backup plugin, which normally adds a "Backup" tab
+alongside the plugin's own settings) stopped rendering as a proper tab
+and appeared stacked below instead. Confirmed via a direct side-by-side
+comparison on the same site, same browser window: broken on 2.3.0,
+correct after downgrading to 2.2.3.
+
+- **Likely root cause**: the `exclude_classes` field's description
+  (added in 2.2.4, to explain the new ancestor-checking behavior)
+  contained literal HTML-tag-like text - `<figure>`, `<div>`, and
+  `<img>` - written directly into the language string as plain-text
+  examples. If Joomla's admin UI renders field hints/tooltips with HTML
+  interpretation enabled (common, since Joomla hints support some
+  formatting), these would be parsed as real, never-properly-closed
+  HTML elements injected into the admin page itself - corrupting the
+  surrounding DOM structure. That would plausibly explain both symptoms
+  at once: broken field-row layout (elements reflowing around the
+  stray unclosed tags) and a third-party plugin's tab-rendering logic
+  failing to find/attach to the expected DOM structure.
+- **Fixed** by rewriting the description to avoid literal angle-bracket
+  tag syntax entirely (e.g. "a figure or div" instead of "a `<figure>`
+  or `<div>`"), in both English and Slovak. A full scan of every other
+  field label and description string in both language files, plus the
+  plugin's top-level XML description, confirmed this was the only
+  occurrence of this pattern anywhere in the plugin.
+- **Honesty about confidence**: this is a strong hypothesis based on
+  how Joomla's admin field-hint rendering is understood to work, not a
+  verified root cause - it could not be reproduced or confirmed on a
+  live Joomla install from this environment. If the issue persists
+  after upgrading to this version, further investigation will be
+  needed with actual browser DevTools inspection on the live site.
+
 ## 2.3.0
 Response to a Grok AI code review (P2, real ongoing performance cost -
 **default behavior change, please read**).
