@@ -78,9 +78,9 @@
         overlay.innerHTML =
             '<button type="button" id="alb-close" aria-label="' + escapeHtmlAttr(ALB_CONFIG.labels.close) + '">&times;</button>' +
             '<button type="button" id="alb-prev" aria-label="' + escapeHtmlAttr(ALB_CONFIG.labels.previous) + '">&#8249;</button>' +
-            '<div id="alb-wrap"><img id="alb-img" src="" alt=""/><div id="alb-error"></div><div id="alb-caption"></div></div>' +
+            '<div id="alb-wrap"><img id="alb-img" src="" alt="" decoding="async"/><div id="alb-error"></div><div id="alb-caption" aria-live="polite" aria-atomic="true"></div></div>' +
             '<button type="button" id="alb-next" aria-label="' + escapeHtmlAttr(ALB_CONFIG.labels.next) + '">&#8250;</button>' +
-            '<span id="alb-counter"></span>';
+            '<span id="alb-counter" aria-live="polite" aria-atomic="true"></span>';
         document.body.appendChild(overlay);
 
         var items = [], current = 0;

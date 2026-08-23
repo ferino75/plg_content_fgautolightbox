@@ -4,6 +4,37 @@ This changelog covers the **native Joomla 6 build** only (this `joomla6/`
 folder). For the classic Joomla 3.10 build's history, see
 [`../CHANGELOG.md`](../CHANGELOG.md) in the repository root.
 
+## 2.3.5
+Items 4 and 6 from a broader Grok AI review of smaller improvements
+("Menšie, ale oplatí sa to"). Item 5 (figcaption/title) intentionally
+skipped for now, pending further discussion.
+
+**4. Screen readers now announce caption/counter changes during
+navigation**
+- Navigating between images (prev/next, or arrow keys) previously
+  updated the caption text and the "2 / 5" counter silently - a
+  screen reader user got no feedback that anything had changed unless
+  they re-read the whole overlay manually.
+- Added `aria-live="polite"` and `aria-atomic="true"` to both
+  `#alb-caption` and `#alb-counter`. `aria-live="polite"` means the
+  update is announced without interrupting whatever the screen reader
+  is currently saying; `aria-atomic="true"` ensures the *entire*
+  updated text is announced as one unit (e.g. the full "2 / 5", not
+  just a changed digit).
+
+**6. `decoding="async"` on the lightbox image**
+- Added to `#alb-img`. A small, low-risk win: lets the browser decode
+  the image off the main thread instead of potentially blocking
+  rendering, particularly relevant when switching quickly between
+  images in a gallery.
+
+Verified with automated tests: both new attributes are present on the
+overlay elements, and - importantly - caption/counter content still
+updates correctly on open and on navigation (a functional regression
+check, since this touches the same HTML template used throughout the
+overlay). Full regression across the entire JS test suite confirms no
+other impact.
+
 ## 2.3.4
 First three items from a broader Grok AI review of smaller
 improvements ("Menšie, ale oplatí sa to").
