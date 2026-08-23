@@ -4,6 +4,45 @@ This changelog covers the **native Joomla 6 build** only (this `joomla6/`
 folder). For the classic Joomla 3.10 build's history, see
 [`../CHANGELOG.md`](../CHANGELOG.md) in the repository root.
 
+## 2.2.4
+Response to a Grok AI code review (P1, real editor UX expectation):
+
+- **`exclude_classes` only checked the `<img>` element's own `class`
+  attribute.** A content editor wrapping a whole block - e.g.
+  `<figure class="no-lightbox"><img></figure>` or
+  `<div class="no-lightbox"><img></div>` - would naturally expect that
+  to exclude the image, but the image inside was still processed,
+  since the wrapping element's class was never checked.
+- **Fixed by walking up to 4 ancestor levels** from the image, checking
+  each ancestor's own class list too, not just the image's. Four
+  levels is a deliberate compromise - enough for common wrapping
+  patterns (`<figure>`, a `<div>`, or a `<p>`, even a couple of levels
+  nested), without walking all the way up to the article root, where a
+  coincidental class match unrelated to the administrator's intent
+  would become a real risk.
+- Implemented identically in PHP (`HtmlProcessor::hasExcludedClass()`)
+  and JS (new `hasExcludedClass()` helper, replacing the previous
+  image-only inline check in `wrapNewImage()`).
+- **A real gap was found and fixed while implementing this**: the
+  editor-link-upgrade feature (2.1.8, point 1's Grok fix) already
+  checked `exclude_classes` on the PHP side, but its JS equivalent
+  (`tryUpgradeForeignLink()`, for dynamically-added content) never
+  checked it at all - a TinyMCE/JCE-style link inside an excluded
+  block added via AJAX would have been upgraded anyway. Now consistent
+  between PHP and JS.
+- Field description updated in both languages to explain that wrapping
+  elements are checked too, not just the image itself.
+- Verified with 12 tests across PHP and JS: the exact reported scenario
+  (`<div class="no-lightbox">`), `<figure>`, a two-level-deep nesting
+  case, the class-directly-on-`<img>` case (still working exactly as
+  before), an unrelated class correctly *not* excluding, multiple
+  images on the page where only the wrapped one is excluded, an empty
+  `exclude_classes` setting behaving exactly as before, and the newly
+  fixed foreign-link-upgrade consistency case (both for a plain
+  dynamically-added image and for the TinyMCE/JCE upgrade path). Full
+  regression across all previously available tests confirms no other
+  impact.
+
 ## 2.2.3
 Response to a Grok AI code review (P1, real false-positive risk),
 revisiting a point ChatGPT had also raised earlier (where the decision

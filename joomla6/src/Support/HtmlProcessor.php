@@ -245,14 +245,35 @@ final class HtmlProcessor
     /**
      * @param string[] $excludeClasses
      */
+    /**
+     * Kontroluje exclude_classes nielen na samotnom <img>, ale aj na jeho
+     * predkoch (do 4 úrovní) - napr. <figure class="no-lightbox"><img></figure>
+     * alebo <div class="no-lightbox"><img></div>. Redaktori prirodzene
+     * očakávajú, že obalenie CELÉHO bloku vylučujúcou triedou stačí, nemusia
+     * vedieť, že by ju museli dať priamo na <img>.
+     *
+     * 4 úrovne je zámerný kompromis - dosť na bežné vzory obaľovania
+     * (figure, div, p), ale nie neobmedzené prehľadávanie celého stromu až
+     * po koreň článku, kde by hrozilo náhodné zhodnutie s triedou nesúvisiacou
+     * so zámerom administrátora.
+     */
     private function hasExcludedClass(\DOMElement $img, array $excludeClasses): bool
     {
         if ($excludeClasses === []) {
             return false;
         }
 
-        $imgClasses = preg_split('/\s+/', trim($img->getAttribute('class'))) ?: [];
+        $node = $img;
+        $depth = 0;
+        while ($node instanceof \DOMElement && $depth <= 4) {
+            $classes = preg_split('/\s+/', trim($node->getAttribute('class'))) ?: [];
+            if (array_intersect($excludeClasses, $classes) !== []) {
+                return true;
+            }
+            $node = $node->parentNode;
+            ++$depth;
+        }
 
-        return array_intersect($excludeClasses, $imgClasses) !== [];
+        return false;
     }
 }

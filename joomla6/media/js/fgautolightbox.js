@@ -513,6 +513,7 @@
         function tryUpgradeForeignLink(img, anchor) {
             var href = anchor.getAttribute("href");
             if (!href || !hasAllowedExtension(href)) return false;
+            if (hasExcludedClass(img)) return false;
 
             var rawAlt = img.getAttribute("alt") || img.getAttribute("data-alt") || "";
             var title = "";
@@ -537,6 +538,26 @@
             }
 
             return true;
+        }
+
+        // Kontroluje excludeClasses nielen na samotnom obrázku, ale aj na
+        // jeho predkoch (do 4 úrovní) - rovnaká logika a hĺbka ako na PHP
+        // strane (viď HtmlProcessor::hasExcludedClass()). Redaktori
+        // prirodzene očakávajú, že obalenie CELÉHO bloku vylučujúcou
+        // triedou (napr. <figure class="no-lightbox">) stačí.
+        function hasExcludedClass(el) {
+            if (!ALB_CONFIG.excludeClasses.length) return false;
+            var node = el;
+            var depth = 0;
+            while (node && node.nodeType === 1 && depth <= 4) {
+                var classes = (node.getAttribute("class") || "").split(/\s+/);
+                for (var i = 0; i < ALB_CONFIG.excludeClasses.length; i++) {
+                    if (classes.indexOf(ALB_CONFIG.excludeClasses[i]) !== -1) return true;
+                }
+                node = node.parentElement;
+                depth++;
+            }
+            return false;
         }
 
         function wrapNewImage(img) {
@@ -565,10 +586,7 @@
             // vlastné CSS/JS hooky), ale už sa nepoužíva na rozhodovanie.
             if (processedImages && processedImages.has(img)) return;
 
-            var imgClasses = (img.getAttribute("class") || "").split(/\s+/);
-            for (var i = 0; i < ALB_CONFIG.excludeClasses.length; i++) {
-                if (imgClasses.indexOf(ALB_CONFIG.excludeClasses[i]) !== -1) return;
-            }
+            if (hasExcludedClass(img)) return;
 
             var srcVal = pickBestSrc(img);
             if (!srcVal) return;
