@@ -4,6 +4,50 @@ This changelog covers the **native Joomla 6 build** only (this `joomla6/`
 folder). For the classic Joomla 3.10 build's history, see
 [`../CHANGELOG.md`](../CHANGELOG.md) in the repository root.
 
+## 2.3.3
+Response to a Grok AI code review (P1, real security hardening).
+
+- **An empty `allowed_extensions` setting meant "allow everything"**,
+  not "use the default list". If an administrator cleared the field
+  entirely (accidentally or otherwise), `ExtensionFilter::isAllowed()`
+  returned `true` unconditionally - including for `javascript:` URIs,
+  `data:text/html,...` payloads, and `.svg` files (which are excluded
+  from the *default* list specifically because they can contain
+  embedded scripts). Since `pickBestSrc()` picks its value from
+  content-controlled attributes (`src`, `data-full`, `srcset`, etc.),
+  this was a real, if narrow, risk surface.
+- **Fixed in two independent, complementary ways:**
+  1. `ExtensionFilter::fromCsv('')` now falls back to the same safe
+     default list used in the manifest (`jpg,jpeg,png,gif,webp,avif`)
+     instead of returning "no restriction". Direct construction with an
+     empty array (bypassing `fromCsv()`) now fails closed - denies
+     everything - as the safest behavior for a class that could be
+     reused elsewhere in the future without going through the CSV
+     parser.
+  2. Added an independent **URL scheme whitelist**, checked before the
+     extension check and regardless of the `allowed_extensions` setting:
+     only `http:`/`https:` (or no scheme at all - i.e. a normal relative
+     path like `/images/photo.jpg`) are accepted; anything else
+     (`javascript:`, `data:`, `vbscript:`, `ftp:`, etc.) is rejected
+     outright, even if it happened to have an otherwise-allowed file
+     extension.
+  Both fixes were implemented identically in PHP
+  (`ExtensionFilter`) and JS (`hasAllowedExtension()`/new
+  `hasSafeScheme()`), since JS independently resolves sources for
+  dynamically-added images.
+- Verified with automated tests: the exact reported scenarios
+  (`javascript:alert(1)`, `data:text/html,...`, `.svg` all correctly
+  rejected with an empty extensions list, while `.jpg`/`.png` remain
+  allowed via the safe default), the scheme check applying
+  independently of the extensions setting (`data:image/svg+xml;...`
+  rejected even with a normal non-empty allowlist), legitimate
+  `http:`/`https:`/relative URLs continuing to work exactly as before,
+  and the fail-closed behavior of direct `ExtensionFilter`
+  construction with an empty array. Full regression across the entire
+  test suite (PHP and JS) confirms no other impact - one existing test
+  that specifically asserted the old "empty list = unrestricted"
+  behavior was updated to reflect the new, safer behavior.
+
 ## 2.3.2
 **Real bug, reported directly from the live site right after 2.3.1**:
 the "Watch for dynamically added images" dropdown still showed "Yes

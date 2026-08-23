@@ -344,13 +344,32 @@
 
         // --- Podpora dynamicky pridaných obrázkov (AJAX / infinite scroll) ---
 
+        // Rovnaký bezpečný predvolený zoznam ako v PHP ExtensionFilter -
+        // použije sa, ak by ALB_CONFIG.allowedExtensions bol prázdny.
+        var DEFAULT_ALLOWED_EXTENSIONS = ["jpg", "jpeg", "png", "gif", "webp", "avif"];
+        var SAFE_SCHEMES = ["http:", "https:"];
+
+        // Zamietne nebezpečné URL schémy (javascript:, data:, vbscript:...).
+        // Relatívna cesta bez schémy (bežný prípad, napr. "/images/x.jpg")
+        // je vždy v poriadku - rovnaká logika ako PHP
+        // ExtensionFilter::hasSafeScheme().
+        function hasSafeScheme(srcVal) {
+            var m = srcVal.match(/^([a-zA-Z][a-zA-Z0-9+.-]*:)/);
+            if (!m) return true;
+            return SAFE_SCHEMES.indexOf(m[1].toLowerCase()) !== -1;
+        }
+
         function hasAllowedExtension(srcVal) {
-            if (!ALB_CONFIG.allowedExtensions.length) return true; // prázdny zoznam = bez obmedzenia
+            if (!hasSafeScheme(srcVal)) return false;
+            // Prázdny zoznam sa NECHÁPE ako "povoliť všetko" (bezpečnostné
+            // riziko - pustilo by aj SVG so vloženými skriptami) - spadne na
+            // rovnaký bezpečný default ako PHP strana pri fromCsv('').
+            var allowed = ALB_CONFIG.allowedExtensions.length ? ALB_CONFIG.allowedExtensions : DEFAULT_ALLOWED_EXTENSIONS;
             var clean = srcVal.split("?")[0].split("#")[0];
             var dot = clean.lastIndexOf(".");
             if (dot === -1) return false;
             var ext = clean.substring(dot + 1).toLowerCase();
-            return ALB_CONFIG.allowedExtensions.indexOf(ext) !== -1;
+            return allowed.indexOf(ext) !== -1;
         }
 
         // WeakSet sledovania spracovaných elementov - odolnejšie než len
