@@ -20,8 +20,30 @@
         watchContainer: "",
         showNavigation: true,
         preloadAdjacent: true,
-        allowedExtensions: ["jpg", "jpeg", "png", "gif", "webp", "avif"]
+        allowedExtensions: ["jpg", "jpeg", "png", "gif", "webp", "avif"],
+        // Anglická záloha pre prípad, že by config z PHP labels neposlal
+        // vôbec (napr. veľmi stará verzia zabudnutá v prehliadačovej cache) -
+        // reálne sa vždy prepíšu hodnotami z Joomla jazykových reťazcov
+        // zodpovedajúcich jazyku danej stránky (viď Fgautolightbox::handle()).
+        labels: {
+            dialog: "Image gallery",
+            close: "Close",
+            previous: "Previous image",
+            next: "Next image"
+        }
     };
+
+    // Bezpečné vloženie textu (napr. jazykového reťazca) do HTML atribútu v
+    // rámci innerHTML zostavovania - labels pochádzajú z Joomla jazykových
+    // súborov, ktoré sú v princípe upraviteľné, takže sa neuvádzajú do
+    // innerHTML surovo bez ošetrenia.
+    function escapeHtmlAttr(value) {
+        return String(value)
+            .replace(/&/g, "&amp;")
+            .replace(/"/g, "&quot;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;");
+    }
 
     function albInit() {
         var userConfig = (typeof window.FG_AUTOLIGHTBOX_CONFIG === "object" && window.FG_AUTOLIGHTBOX_CONFIG) || {};
@@ -29,6 +51,18 @@
         for (var k in DEFAULTS) {
             ALB_CONFIG[k] = (k in userConfig) ? userConfig[k] : DEFAULTS[k];
         }
+        // labels sa zlučuje po jednotlivých kľúčoch (nie plytko na úrovni
+        // celého objektu) - ak by userConfig.labels existoval, ale bol len
+        // čiastočne vyplnený (napr. stará cachovaná verzia s inou sadou
+        // kľúčov), chýbajúce popisky by inak zostali "undefined" namiesto
+        // anglickej zálohy.
+        var userLabels = (userConfig && typeof userConfig.labels === "object" && userConfig.labels) || {};
+        ALB_CONFIG.labels = {
+            dialog: userLabels.dialog || DEFAULTS.labels.dialog,
+            close: userLabels.close || DEFAULTS.labels.close,
+            previous: userLabels.previous || DEFAULTS.labels.previous,
+            next: userLabels.next || DEFAULTS.labels.next
+        };
 
         var overlay = document.createElement("div");
         overlay.id = "alb-overlay";
@@ -37,12 +71,12 @@
         }
         overlay.setAttribute("role", "dialog");
         overlay.setAttribute("aria-modal", "true");
-        overlay.setAttribute("aria-label", "Galéria obrázkov");
+        overlay.setAttribute("aria-label", ALB_CONFIG.labels.dialog);
         overlay.innerHTML =
-            '<button type="button" id="alb-close" aria-label="Zatvoriť">&times;</button>' +
-            '<button type="button" id="alb-prev" aria-label="Predchádzajúci obrázok">&#8249;</button>' +
+            '<button type="button" id="alb-close" aria-label="' + escapeHtmlAttr(ALB_CONFIG.labels.close) + '">&times;</button>' +
+            '<button type="button" id="alb-prev" aria-label="' + escapeHtmlAttr(ALB_CONFIG.labels.previous) + '">&#8249;</button>' +
             '<div id="alb-wrap"><img id="alb-img" src="" alt=""/><div id="alb-caption"></div></div>' +
-            '<button type="button" id="alb-next" aria-label="Ďalší obrázok">&#8250;</button>' +
+            '<button type="button" id="alb-next" aria-label="' + escapeHtmlAttr(ALB_CONFIG.labels.next) + '">&#8250;</button>' +
             '<span id="alb-counter"></span>';
         document.body.appendChild(overlay);
 

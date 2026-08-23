@@ -4,6 +4,46 @@ This changelog covers the **native Joomla 6 build** only (this `joomla6/`
 folder). For the classic Joomla 3.10 build's history, see
 [`../CHANGELOG.md`](../CHANGELOG.md) in the repository root.
 
+## 2.1.3
+Response to a ChatGPT code review observation (P1 for accessibility):
+
+- **Screen reader labels were hardcoded in Slovak**, regardless of the
+  admin's actual language. `aria-label="Galéria obrázkov"`,
+  `"Zatvoriť"`, `"Predchádzajúci obrázok"`, `"Ďalší obrázok"` were
+  literal strings in the JS engine - an `en-GB` Joomla install would
+  still have its screen reader announce these in Slovak.
+- **Fix:** four new translatable language constants
+  (`PLG_CONTENT_FGAUTOLIGHTBOX_JS_DIALOG_LABEL`, `_CLOSE_LABEL`,
+  `_PREV_LABEL`, `_NEXT_LABEL`) are resolved via `Text::_()` on the PHP
+  side and sent through the existing inline config block as a `labels`
+  object, matching the site's actual language.
+- `$this->loadLanguage()` is now called before `Text::_()` - not
+  guaranteed to already be loaded on the frontend the way it is for the
+  admin config form, so without this the labels would have silently
+  come back as the raw untranslated constant names instead of text.
+- The JS side merges `labels` key-by-key (not as one shallow object
+  replacement) with an English-language fallback for each individual
+  key, so a partially-populated or entirely missing `labels` object
+  (e.g. a stale cached JS file from before this version, paired with a
+  fresh config) degrades gracefully to English rather than showing
+  `undefined`.
+- Label text going into the overlay's `innerHTML`-built buttons is now
+  HTML-attribute-escaped, since these strings originate from
+  (admin-editable) language files rather than being fixed literals.
+- Also fixed a stale line in the `watch_container` field's admin
+  description - it still described the pre-2.1.2 "falls back to
+  watching the whole page" behavior that no longer exists.
+- Verified with automated tests: English and Slovak label sets both
+  render correctly on the actual DOM elements, a missing config
+  entirely falls back to English, a partially-populated `labels` object
+  falls back to English only for the missing keys (not `undefined`),
+  and an HTML-unsafe character in a label round-trips correctly without
+  breaking markup or enabling injection. PHP-side verified with a
+  `Text::_()`/`loadLanguage()` stub confirming the call order and that
+  translated strings reach the inline config JSON. Full regression
+  across all 34 isolated Support-class tests and the JS mutation/
+  container test suites confirms no other impact.
+
 ## 2.1.2
 Response to a ChatGPT code review suggestion ("closes the loop" on
 `watch_container`, not critical but worth doing):

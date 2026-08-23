@@ -11,6 +11,7 @@ use FG\Plugin\Content\Fgautolightbox\Support\HtmlProcessor;
 use FG\Plugin\Content\Fgautolightbox\Support\LinkAttributes;
 use FG\Plugin\Content\Fgautolightbox\Support\SrcSetResolver;
 use Joomla\CMS\Event\Content\ContentPrepareEvent;
+use Joomla\CMS\Language\Text;
 use Joomla\CMS\Plugin\CMSPlugin;
 use Joomla\CMS\Uri\Uri;
 use Joomla\Event\DispatcherInterface;
@@ -138,6 +139,13 @@ final class Fgautolightbox extends CMSPlugin implements SubscriberInterface
             return;
         }
 
+        // Nutné pred Text::_() volaním nižšie - na frontende nie je zaručené,
+        // že Joomla jazykový súbor tohto pluginu už automaticky načítala
+        // (na rozdiel od admin formulára nastavení, kde sa to deje samo).
+        // Bez tohto by Text::_() vrátil surový názov konštanty namiesto
+        // prekladu.
+        $this->loadLanguage();
+
         $linkClass = (string) $this->params->get('link_class', 'autolightbox');
 
         $config = [
@@ -154,6 +162,17 @@ final class Fgautolightbox extends CMSPlugin implements SubscriberInterface
                 (string) $this->params->get('allowed_extensions', 'jpg,jpeg,png,gif,webp,avif'),
                 lowercase: true,
             ),
+            // Prekladateľné texty pre čítačky obrazovky (aria-label/aria-modal
+            // popisky) - predtým boli natvrdo po slovensky v JS, takže by ich
+            // pri en-GB administrácii čítačka hlásila po slovensky bez ohľadu
+            // na jazyk stránky. JS strana má aj vlastný anglický fallback pre
+            // prípad staršieho cachovaného configu bez tohto poľa.
+            'labels' => [
+                'dialog' => Text::_('PLG_CONTENT_FGAUTOLIGHTBOX_JS_DIALOG_LABEL'),
+                'close' => Text::_('PLG_CONTENT_FGAUTOLIGHTBOX_JS_CLOSE_LABEL'),
+                'previous' => Text::_('PLG_CONTENT_FGAUTOLIGHTBOX_JS_PREV_LABEL'),
+                'next' => Text::_('PLG_CONTENT_FGAUTOLIGHTBOX_JS_NEXT_LABEL'),
+            ],
         ];
 
         $wa = $this->getApplication()->getDocument()->getWebAssetManager();
