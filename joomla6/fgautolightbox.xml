@@ -2,8 +2,9 @@
 <extension type="plugin" group="content" method="upgrade">
     <name>PLG_CONTENT_FGAUTOLIGHTBOX</name>
     <author>FG</author>
-    <version>2.1.5</version>
+    <version>2.1.6</version>
     <description>PLG_CONTENT_FGAUTOLIGHTBOX_XML_DESCRIPTION</description>
+    <scriptfile>script.php</scriptfile>
     <namespace path="src">FG\Plugin\Content\Fgautolightbox</namespace>
     <files>
         <folder plugin="fgautolightbox">services</folder>

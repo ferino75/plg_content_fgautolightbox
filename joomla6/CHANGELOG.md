@@ -4,6 +4,37 @@ This changelog covers the **native Joomla 6 build** only (this `joomla6/`
 folder). For the classic Joomla 3.10 build's history, see
 [`../CHANGELOG.md`](../CHANGELOG.md) in the repository root.
 
+## 2.1.6
+Response to two related ChatGPT code review points about manifest/update
+server safety (P1):
+
+- **New installer preflight check** (`script.php`, declared via
+  `<scriptfile>` in the manifest). Previously, installing this
+  Joomla-6-only build on an incompatible environment (Joomla 5, or PHP
+  below 8.3) would silently succeed at the install step and only fail
+  later with a confusing fatal error the first time the plugin actually
+  ran. It now checks the PHP version and `JVERSION` in `preflight()`
+  and aborts the installation cleanly with a proper error message if
+  either requirement isn't met - before any files are even copied into
+  place.
+- **`updates.xml` now also declares `<php_minimum>8.3</php_minimum>`**
+  alongside the existing `<targetplatform>` restriction. This is
+  Joomla's own, officially documented mechanism (used by Joomla core's
+  own update stream) for the update client itself to filter out
+  incompatible offers - so "Find Updates" won't offer this build to a
+  site running an unsupported PHP version, on top of the existing
+  Joomla-version restriction.
+- Verified with automated tests: `preflight()` returns `true` on a
+  simulated compatible environment (current PHP 8.3.6, simulated
+  Joomla 6.1.2), returns `false` and enqueues a proper `error`-type
+  message on a simulated incompatible Joomla version (5.4.3), the
+  version-comparison logic itself is correct at the boundary (exactly
+  8.3.0 passes, 8.2.9 doesn't), and the remaining
+  `InstallerScriptInterface` methods (`install`/`update`/`uninstall`/
+  `postflight`) are present and return `true` as expected. Full
+  regression across the body-overflow test and all 34 isolated
+  Support-class tests confirms no other impact.
+
 ## 2.1.5
 Response to a ChatGPT code review observation (P2, clean small fix):
 
