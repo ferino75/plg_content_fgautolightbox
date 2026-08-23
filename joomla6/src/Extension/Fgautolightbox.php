@@ -35,7 +35,7 @@ final class Fgautolightbox extends CMSPlugin implements SubscriberInterface
      * hodnota pre statické CSS/JS assety namiesto filemtime() (viď
      * getAssetCacheBuster() nižšie).
      */
-    private const string VERSION = '2.3.5';
+    private const string VERSION = '2.3.6';
 
     private static bool $assetsLoaded = false;
 

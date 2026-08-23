@@ -4,6 +4,45 @@ This changelog covers the **native Joomla 6 build** only (this `joomla6/`
 folder). For the classic Joomla 3.10 build's history, see
 [`../CHANGELOG.md`](../CHANGELOG.md) in the repository root.
 
+## 2.3.6
+Items 9 and 11 from a broader Grok AI review of smaller improvements
+("Menšie, ale oplatí sa to"). Item 10 (language file prefix) skipped
+per explicit decision - the current `en-GB.plg_..`/`sk-SK.plg_...`
+naming already works correctly under J4+, so renaming would be pure
+risk for zero functional gain.
+
+**9. Overlay hidden when printing**
+- If a visitor printed the page (Ctrl+P) while the lightbox happened to
+  be open, the full-screen dark overlay would print too - a large,
+  useless dark panel on top of the actual page content.
+- Added `@media print { #alb-overlay { display:none !important; } }` -
+  the overlay is completely hidden in print output, regardless of
+  whether it was open on screen.
+- Verified as syntactically valid CSS via a real parser (`tinycss2`,
+  zero errors, 30 top-level rules total). Actual print-preview
+  rendering isn't testable outside a real browser from this
+  environment.
+
+**11. `joomla.asset.json` workaround - documented as a TODO, not
+reverted**
+- 2.0.1 replaced `WebAssetManager::addRegistryFile()` +
+  `useStyle()`/`useScript()` with the more direct
+  `registerAndUseStyle()`/`registerAndUseScript()`, after the registry-
+  file approach was found to silently fail to render `<link>`/
+  `<script>` tags on a live Joomla 6.1.2 site (see the 2.0.1 entry
+  below for the original write-up).
+- This is being left exactly as-is for now - the direct API call is
+  proven working end-to-end on a live site, and reverting to the
+  registry-file approach without being able to re-test it would be a
+  pure regression risk for no benefit.
+- **Recorded here as an open TODO**: re-verify whether
+  `addRegistryFile()` + `useStyle()`/`useScript()` behaves correctly on
+  a more recent Joomla 6.x release (in case the underlying issue was
+  specific to 6.1.2 and has since been fixed upstream) - only worth
+  reconsidering if there's a concrete reason to prefer the registry-
+  file approach again (e.g. wanting Joomla's own asset dependency
+  graph resolution), not for its own sake.
+
 ## 2.3.5
 Items 4 and 6 from a broader Grok AI review of smaller improvements
 ("Menšie, ale oplatí sa to"). Item 5 (figcaption/title) intentionally

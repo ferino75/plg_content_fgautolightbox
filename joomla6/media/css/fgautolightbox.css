@@ -151,3 +151,11 @@ a.alb-link { cursor:zoom-in; }
         transform:translate(-50%,-50%) scale(1) !important;
     }
 }
+
+/* Ak by bol lightbox otvorený v momente, keď návštevník vytlačí stránku
+   (Ctrl+P), overlay by sa inak vytlačil tiež - celoobrazovkový tmavý
+   panel navyše k samotnému obsahu stránky. Pri tlači sa preto úplne
+   skryje. */
+@media print {
+    #alb-overlay { display:none !important; }
+}
