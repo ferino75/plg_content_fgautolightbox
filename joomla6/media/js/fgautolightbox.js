@@ -91,11 +91,14 @@
         var previousBodyOverflow = "";
 
         function open(clickedEl) {
-            // Zoskup iba obrázky so ZHODNÝM "rel" atribútom ako kliknutý odkaz
-            // (napr. len obrázky z toho istého článku, nie z celej stránky)
-            var group = clickedEl.getAttribute("rel") || "";
+            // Zoskup iba obrázky so ZHODNÝM "data-alb-group" atribútom ako
+            // kliknutý odkaz (napr. len obrázky z toho istého článku, nie z
+            // celej stránky). Zámerne nie "rel" - ten je vyhradený pre
+            // skutočné HTML5 link types (nofollow, noopener...), nie pre
+            // vlastné aplikačné dáta.
+            var group = clickedEl.getAttribute("data-alb-group") || "";
             var all = Array.prototype.filter.call(document.querySelectorAll(ALB_SELECTOR), function(a) {
-                return (a.getAttribute("rel") || "") === group;
+                return (a.getAttribute("data-alb-group") || "") === group;
             });
 
             items = [];
@@ -380,6 +383,45 @@
             if (rawAlt) { link.setAttribute("data-alb-alt", rawAlt); } else { link.removeAttribute("data-alb-alt"); }
         }
 
+        // Ak <img> už je v CUDZOM odkaze (nie našom "alb-link") - typicky
+        // TinyMCE/JCE vzor "prepojiť na plnú veľkosť obrázka" v editore
+        // (<a href="full.jpg"><img src="thumb.jpg"></a>) - "upgraduje" ho na
+        // lightbox namiesto úplného ignorovania. Bezpečné pravidlo: len ak
+        // href ukazuje na povolenú príponu obrázka. Existujúce triedy/title
+        // sa zachovávajú/rozširujú, nie prepisujú. Skupinové dáta idú do
+        // "data-alb-group", nie "rel" - preto sa (na rozdiel od staršej
+        // verzie) už nemusíme obávať prepísania cudzieho rel (napr.
+        // nofollow) a upgrade prebehne aj pre takéto odkazy, bez toho, aby
+        // sme sa ich vlastného rel čo i len dotkli.
+        function tryUpgradeForeignLink(img, anchor) {
+            var href = anchor.getAttribute("href");
+            if (!href || !hasAllowedExtension(href)) return false;
+
+            var rawAlt = img.getAttribute("alt") || img.getAttribute("data-alt") || "";
+            var title = "";
+            if (ALB_CONFIG.showCaption === "alt") {
+                title = rawAlt;
+            } else if (ALB_CONFIG.showCaption === "filename") {
+                var filename = href.split("/").pop().split("?")[0];
+                try { filename = decodeURIComponent(filename); } catch (e) {}
+                title = filename.replace(/\.[^.]+$/, "").replace(/[_-]/g, " ");
+            }
+
+            var newClass = ALB_CONFIG.linkClass ? "alb-link " + ALB_CONFIG.linkClass : "alb-link";
+            var existingClass = (anchor.getAttribute("class") || "").trim();
+            anchor.setAttribute("class", existingClass ? existingClass + " " + newClass : newClass);
+            anchor.setAttribute("data-alb-group", ALB_CONFIG.galleryGroup);
+
+            if (title && !anchor.getAttribute("title")) {
+                anchor.setAttribute("title", title);
+            }
+            if (rawAlt && !anchor.hasAttribute("data-alb-alt")) {
+                anchor.setAttribute("data-alb-alt", rawAlt);
+            }
+
+            return true;
+        }
+
         function wrapNewImage(img) {
             var existingLink = img.closest("a");
             if (existingLink) {
@@ -392,6 +434,8 @@
                 // reálneho obrázka.
                 if (existingLink.classList.contains("alb-link")) {
                     updateExistingWrapper(img, existingLink);
+                } else {
+                    tryUpgradeForeignLink(img, existingLink);
                 }
                 return;
             }
@@ -430,7 +474,7 @@
             var link = document.createElement("a");
             link.setAttribute("href", srcVal);
             link.setAttribute("class", ALB_CONFIG.linkClass ? "alb-link " + ALB_CONFIG.linkClass : "alb-link");
-            link.setAttribute("rel", scopedGalleryGroup(img));
+            link.setAttribute("data-alb-group", scopedGalleryGroup(img));
             if (title) link.setAttribute("title", title);
             if (rawAlt) link.setAttribute("data-alb-alt", rawAlt);
             img.setAttribute("data-alb-done", "1");

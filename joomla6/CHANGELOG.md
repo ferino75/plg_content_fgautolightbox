@@ -4,6 +4,67 @@ This changelog covers the **native Joomla 6 build** only (this `joomla6/`
 folder). For the classic Joomla 3.10 build's history, see
 [`../CHANGELOG.md`](../CHANGELOG.md) in the repository root.
 
+## 2.1.8
+Two items from a Grok AI code review:
+
+**1. Images already wrapped in an editor-created `<a>` are no longer
+skipped (P1, common real-world case)**
+- `//img[not(ancestor::a)]` deliberately skips images already inside a
+  link, to avoid producing invalid nested `<a><a>...</a></a>` markup.
+  But TinyMCE and JCE both commonly insert exactly
+  `<a href="full.jpg"><img src="thumb.jpg"></a>` via their own "link to
+  full-size image" option - on real articles, this was reportedly the
+  most common reason the lightbox "just didn't work" on a particular
+  image, since that image was silently skipped entirely.
+- Fixed with a second pass: for images found *inside* an `<a>`, if that
+  anchor's `href` points to an allowed image extension, the *existing*
+  link is upgraded in place (class + grouping + accessible alt added)
+  instead of creating a nested wrapper. A link to something else (PDF,
+  another page) is left completely untouched. Existing CSS classes are
+  extended, not replaced; an existing `title` is preserved, not
+  overwritten. Implemented identically in the PHP DOM branch and in JS
+  (`MutationObserver`, for dynamically added content following the same
+  editor pattern).
+- Verified with 16 tests across PHP and JS: the exact TinyMCE/JCE
+  pattern, a PDF link left untouched, existing classes/title preserved,
+  `exclude_classes` still respected, and correct gallery grouping across
+  multiple upgraded links in the same article.
+
+**2. Gallery grouping moved from `rel` to `data-alb-group` (P1,
+semantic correctness)**
+- `rel="autolightbox-gallery:42"` is not a valid HTML5 link type
+  (`nofollow`, `noopener`, `license`, etc. are) - real validators flag
+  it, and it's not what `rel` is for. Custom application data belongs in
+  a `data-*` attribute instead.
+- Moved gallery-grouping data to `data-alb-group` throughout (PHP and
+  JS); `rel` is no longer touched or read by the plugin at all.
+- **A follow-on improvement fell out of this naturally**: the guard from
+  point 1 above that skipped upgrading a link if it already had *any*
+  `rel` value (added specifically to avoid clobbering an editor's own
+  `rel="nofollow"` etc.) no longer serves a purpose, since we don't
+  write into `rel` anymore. Removed in both PHP and JS - a link with
+  `rel="nofollow"` (or any other real `rel` value) now gets upgraded
+  too, with its own `rel` left completely untouched alongside the new
+  `data-alb-group`.
+- **A real inconsistency was found and fixed while testing**: the guard
+  removal was initially only applied to the JS side, not PHP - caught
+  immediately by the (now-failing) test suite and fixed for both.
+- Verified with automated tests confirming `rel` is never written or
+  read anywhere in the plugin anymore, an existing `rel="nofollow"` is
+  preserved exactly while the link still gets `data-alb-group`, and
+  click-driven gallery grouping still works correctly via the new
+  attribute. Full regression across all 65 available tests (34 isolated
+  Support-class tests, plus the point-1 upgrade tests, foreign-link
+  tests, and stale-wrapper tests, each updated where they specifically
+  asserted the old `rel`-based behavior) confirms no other impact.
+
+**Heads-up on content caching:** if Joomla's content cache is enabled
+and holds articles rendered by an older version of this plugin, that
+stale cached HTML will still have the old `rel`-based grouping until the
+cache is cleared or naturally expires - it degrades gracefully (each
+such image just behaves as its own single-item gallery in the meantime)
+rather than breaking anything.
+
 ## 2.1.7
 Three small items from a ChatGPT code review, bundled into one release:
 

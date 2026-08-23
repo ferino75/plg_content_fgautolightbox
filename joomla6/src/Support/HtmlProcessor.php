@@ -117,7 +117,10 @@ final class HtmlProcessor
             $a = $dom->createElement('a');
             $a->setAttribute('href', $srcVal);
             $a->setAttribute('class', $cssClass);
-            $a->setAttribute('rel', $galleryGroup);
+            // data-alb-group namiesto rel - "rel" je vyhradený pre skutočné
+            // HTML5 link types (nofollow, noopener, license...), nie pre
+            // vlastné aplikačné dáta. data-* atribúty na to presne existujú.
+            $a->setAttribute('data-alb-group', $galleryGroup);
             if ($title !== '') {
                 $a->setAttribute('title', $title);
             }
@@ -136,6 +139,64 @@ final class HtmlProcessor
             ++$wrappedCount;
         }
 
+        // Obrázky, ktoré editor (TinyMCE, JCE...) sám obalil do <a href="...">
+        // - bežný vzor "prepojiť na plnú veľkosť obrázka" v editore. Tieto
+        // //img[not(ancestor::a)] vyššie zámerne preskočí (aby nevznikli
+        // vnorené <a><a>...</a></a>). Namiesto úplného ignorovania sa taký
+        // existujúci odkaz "upgraduje" na lightbox - ale len ak je zjavné, že
+        // ide skutočne o odkaz na obrázok (podľa allowed_extensions), a len
+        // opatrne: nedotýkame sa odkazu, ktorý už má svoj vlastný rel
+        // (mohol by byť zámerný, napr. rel="nofollow"), a existujúci title
+        // aj CSS triedy sa zachovajú/rozšíria, nie prepíšu.
+        foreach ($xpath->query('//img[ancestor::a]') as $img) {
+            if (!$img instanceof \DOMElement) {
+                continue;
+            }
+
+            $anchor = $this->findClosestAnchor($img);
+            if ($anchor === null) {
+                continue;
+            }
+
+            $href = $anchor->getAttribute('href');
+            if ($href === '' || !$this->extensionFilter->isAllowed($href)) {
+                continue; // cudzí odkaz (PDF, iná stránka...) - nedotýkať sa
+            }
+
+            // Predtým sa tu odkaz s existujúcim rel (napr. rel="nofollow")
+            // preskočil úplne - to malo zmysel, kým sme skupinové dáta
+            // zapisovali do "rel" a hrozilo prepísanie. Teraz zapisujeme do
+            // "data-alb-group" (viď nižšie), takže cudzí rel sa vôbec
+            // nedotýka - upgrade prebehne aj pre takéto odkazy.
+            if ($this->hasExcludedClass($img, $excludeClasses)) {
+                continue;
+            }
+
+            $altValue = $img->getAttribute('alt');
+            if ($altValue === '' && $img->hasAttribute('data-alt')) {
+                $altValue = $img->getAttribute('data-alt');
+            }
+
+            $title = $this->linkAttributes->buildTitle($href, $altValue, $captionMode);
+            $newClass = $this->linkAttributes->buildLinkClass($linkClass);
+            $existingClass = trim($anchor->getAttribute('class'));
+            $anchor->setAttribute('class', $existingClass === '' ? $newClass : $existingClass . ' ' . $newClass);
+            // data-alb-group namiesto rel - viď poznámka vyššie. Ochranná
+            // kontrola "$anchor->getAttribute('rel') !== ''" o pár riadkov
+            // vyššie zostáva nezmenená - tá kontroluje CUDZÍ existujúci rel
+            // (napr. editorom zámerne nastavený nofollow), nie náš vlastný.
+            $anchor->setAttribute('data-alb-group', $galleryGroup);
+
+            if ($title !== '' && $anchor->getAttribute('title') === '') {
+                $anchor->setAttribute('title', $title);
+            }
+            if ($altValue !== '' && !$anchor->hasAttribute('data-alb-alt')) {
+                $anchor->setAttribute('data-alb-alt', $altValue);
+            }
+
+            ++$wrappedCount;
+        }
+
         $body = $dom->getElementsByTagName('body')->item(0);
         if ($body === null) {
             return $html;
@@ -147,6 +208,22 @@ final class HtmlProcessor
         }
 
         return $result;
+    }
+
+    /**
+     * Nájde najbližšieho predka <a> (nie nutne priameho rodiča).
+     */
+    private function findClosestAnchor(\DOMElement $img): ?\DOMElement
+    {
+        $ancestor = $img->parentNode;
+        while ($ancestor instanceof \DOMElement) {
+            if (strtolower($ancestor->nodeName) === 'a') {
+                return $ancestor;
+            }
+            $ancestor = $ancestor->parentNode;
+        }
+
+        return null;
     }
 
     /**
