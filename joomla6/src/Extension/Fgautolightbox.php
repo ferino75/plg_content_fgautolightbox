@@ -131,6 +131,7 @@ final class Fgautolightbox extends CMSPlugin implements SubscriberInterface
             CaptionMode::tryFrom((string) $this->params->get('show_caption', 'alt')) ?? CaptionMode::Alt,
             $this->csvList((string) $this->params->get('exclude_classes', '')),
             $wrappedCount,
+            (bool) (int) $this->params->get('prefer_srcset', 0),
         );
 
         // Drobná výkonová optimalizácia: ak sa v tomto obsahu neobalil ani
@@ -173,6 +174,7 @@ final class Fgautolightbox extends CMSPlugin implements SubscriberInterface
                 (string) $this->params->get('allowed_extensions', 'jpg,jpeg,png,gif,webp,avif'),
                 lowercase: true,
             ),
+            'preferSrcset' => (bool) (int) $this->params->get('prefer_srcset', 0),
             // Prekladateľné texty pre čítačky obrazovky (aria-label/aria-modal
             // popisky) - predtým boli natvrdo po slovensky v JS, takže by ich
             // pri en-GB administrácii čítačka hlásila po slovensky bez ohľadu

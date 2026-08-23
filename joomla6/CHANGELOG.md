@@ -4,6 +4,72 @@ This changelog covers the **native Joomla 6 build** only (this `joomla6/`
 folder). For the classic Joomla 3.10 build's history, see
 [`../CHANGELOG.md`](../CHANGELOG.md) in the repository root.
 
+## 2.2.0
+Two items from a Grok AI code review, bundled into a minor version
+(new setting + a real behavior change to the loading pipeline):
+
+**5. Lightbox now lets the browser pick the right image size, instead
+of always fetching the largest `srcset` candidate (P1, real mobile
+data/performance impact)**
+- Previously, `parseLargestFromSrcset()` always resolved to a single,
+  fixed URL - the largest candidate in the `srcset`. On a phone with a
+  ~390px viewport, this meant downloading a 2400px JPEG when a much
+  smaller version would have looked identical - and with
+  `preload_adjacent` enabled (the default), the *next* and *previous*
+  images got the same oversized treatment too, tripling the
+  unnecessary data for a single lightbox open.
+- Fixed by passing the entire `srcset` through to the lightbox's
+  `<img>` element (as `data-alb-srcset`, then applied as
+  `img.srcset` + `img.sizes="100vw"`) instead of reducing it to one
+  URL - the browser's own responsive-image algorithm now picks the
+  right size for the actual viewport and pixel density. `data-full`/
+  `data-highres` remain a deliberate "always show the true original"
+  opt-in that bypasses this entirely, exactly as before.
+- **Preload was fixed to match** - without this, preloading the
+  neighboring images would have kept fetching the oversized fallback
+  URL regardless, doubling back the exact problem this fix addresses.
+  Preload `Image()` objects now also use `srcset`+`sizes` when
+  available.
+- Verified with automated tests: the full `srcset` correctly reaches
+  the lightbox `<img>` and switches correctly when navigating between
+  images with and without a `srcset`, `data-full` correctly suppresses
+  it, and preloaded neighbor images are confirmed to use `srcset`+
+  `sizes` rather than the raw largest URL. (Whether real browsers pick
+  a meaningfully smaller file in practice isn't verifiable outside a
+  real device/network - `sizes="100vw"` is a standard, slightly
+  conservative simplification, since the lightbox's CSS actually caps
+  the image at `max-width: 88vw` on desktop, not a full 100vw.)
+
+**6. New "Prefer srcset over data-src" setting - default off, matching
+existing behavior exactly (P1, but genuinely ambiguous - resolved as a
+setting rather than guessed)**
+- `data-src` is used for opposite purposes by different lazy-load
+  libraries: some hold the real full-size image there (the classic
+  build's proven, production-tested convention this plugin has
+  followed since day one), others use it only for a small placeholder
+  while genuine full-size versions live in `srcset`. Reordering the
+  priority outright risks trading one real bug for its mirror image on
+  a differently-configured site.
+- Added `prefer_srcset` (default off/`0`): when enabled, priority
+  becomes `data-full`/`data-highres` > `srcset` > `data-src` > `src`
+  instead of the default `data-full`/`data-highres` > `data-src` >
+  `srcset` > `src`. `data-full`/`data-highres` always wins regardless
+  of this setting.
+- Implemented in both `SrcSetResolver::pickBestSrc()` (new trailing
+  `bool $preferSrcset = false` parameter - deliberately placed last to
+  avoid breaking any existing positional call, including every prior
+  test) and its JS equivalent, driven by the same setting sent through
+  the existing inline config.
+- Verified with automated tests across both PHP and JS: default
+  behavior is unchanged (confirmed identical to pre-2.2.0 output),
+  enabling the setting flips the priority correctly, `data-full` still
+  wins regardless of the setting either way, and the setting correctly
+  falls through to `data-src` then `src` when no `srcset` is present.
+  Full regression across all previously available tests (dozens, PHP
+  and JS combined) confirms no other impact, including full
+  interoperability with 2.1.8's `data-alb-group`/editor-link-upgrade
+  work and this same release's own `data-alb-srcset` addition.
+
 ## 2.1.8
 Two items from a Grok AI code review:
 

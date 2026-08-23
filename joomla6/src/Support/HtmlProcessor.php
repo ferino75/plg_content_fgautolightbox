@@ -42,6 +42,7 @@ final class HtmlProcessor
         CaptionMode $captionMode,
         array $excludeClasses,
         int &$wrappedCount = 0,
+        bool $preferSrcset = false,
     ): string {
         $wrappedCount = 0;
 
@@ -90,13 +91,17 @@ final class HtmlProcessor
                 continue;
             }
 
+            $combinedSrcset = $this->srcSetResolver->getCombinedSrcset($img);
+            $dataFull = $img->getAttribute('data-full');
+            $dataHighres = $img->getAttribute('data-highres');
+
             $srcVal = $this->srcSetResolver->pickBestSrc([
-                'data-full' => $img->getAttribute('data-full'),
-                'data-highres' => $img->getAttribute('data-highres'),
+                'data-full' => $dataFull,
+                'data-highres' => $dataHighres,
                 'data-src' => $img->getAttribute('data-src'),
-                'srcset' => $this->srcSetResolver->getCombinedSrcset($img),
+                'srcset' => $combinedSrcset,
                 'src' => $img->getAttribute('src'),
-            ]);
+            ], $preferSrcset);
 
             if ($srcVal === '' || !$this->extensionFilter->isAllowed($srcVal)) {
                 continue;
@@ -121,6 +126,17 @@ final class HtmlProcessor
             // HTML5 link types (nofollow, noopener, license...), nie pre
             // vlastné aplikačné dáta. data-* atribúty na to presne existujú.
             $a->setAttribute('data-alb-group', $galleryGroup);
+            // Ak nešlo o explicitný "chcem originál" override (data-full/
+            // data-highres), pošli aj celý srcset ďalej do lightboxu - JS
+            // ho použije na <img srcset="..." sizes="100vw"> namiesto
+            // natvrdo vybratého najväčšieho kandidáta, takže si prehliadač
+            // sám vyberie veľkosť podľa skutočnej šírky viewportu (na mobile
+            // tak nestiahne zbytočne napr. 2400px verziu, keď stačí 780px).
+            // data-full/data-highres ostáva zámerným "vždy originál" opt-in
+            // bez ohľadu na viewport.
+            if ($dataFull === '' && $dataHighres === '' && $combinedSrcset !== '') {
+                $a->setAttribute('data-alb-srcset', $combinedSrcset);
+            }
             if ($title !== '') {
                 $a->setAttribute('title', $title);
             }

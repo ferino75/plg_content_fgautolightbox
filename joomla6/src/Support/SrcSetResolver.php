@@ -20,12 +20,39 @@ final class SrcSetResolver
     /**
      * @param array<string, string> $attrs Asociatívne pole atribútov obrázka.
      */
-    public function pickBestSrc(array $attrs): string
+    /**
+     * @param array<string, string> $attrs Asociatívne pole atribútov obrázka.
+     * @param bool $preferSrcset Ak true, poradie sa mení na
+     *                           data-full/data-highres > srcset > data-src > src
+     *                           namiesto predvoleného
+     *                           data-full/data-highres > data-src > srcset > src.
+     *                           "data-src" je v praxi nejednoznačný - niektoré
+     *                           lazy-load knižnice ho používajú ako skutočný
+     *                           plnohodnotný obrázok (predvolené poradie tomu
+     *                           zodpovedá, overené priamo na produkčnom bugu),
+     *                           iné ho používajú ako malý placeholder popri
+     *                           plnohodnotnom responzívnom srcset. Keďže oboje
+     *                           reálne existuje, správne poradie závisí od
+     *                           konkrétnej stránky - preto je to nastavenie,
+     *                           nie natvrdo dané rozhodnutie.
+     */
+    public function pickBestSrc(array $attrs, bool $preferSrcset = false): string
     {
         foreach (['data-full', 'data-highres'] as $key) {
             if (!empty($attrs[$key])) {
                 return $attrs[$key];
             }
+        }
+
+        if ($preferSrcset) {
+            if (!empty($attrs['srcset'])) {
+                $fromSrcset = $this->parseLargestFromSrcset($attrs['srcset']);
+                if ($fromSrcset !== '') {
+                    return $fromSrcset;
+                }
+            }
+
+            return !empty($attrs['data-src']) ? $attrs['data-src'] : ($attrs['src'] ?? '');
         }
 
         if (!empty($attrs['data-src'])) {

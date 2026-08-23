@@ -21,6 +21,7 @@
         showNavigation: true,
         preloadAdjacent: true,
         allowedExtensions: ["jpg", "jpeg", "png", "gif", "webp", "avif"],
+        preferSrcset: false,
         // Anglická záloha pre prípad, že by config z PHP labels neposlal
         // vôbec (napr. veľmi stará verzia zabudnutá v prehliadačovej cache) -
         // reálne sa vždy prepíšu hodnotami z Joomla jazykových reťazcov
@@ -105,6 +106,10 @@
             all.forEach(function(a) {
                 items.push({
                     src: a.getAttribute("href"),
+                    // Ak je nastavený, prehliadač si sám vyberie vhodnú
+                    // veľkosť podľa skutočnej šírky viewportu namiesto
+                    // vždy najväčšieho kandidáta (viď show()).
+                    srcset: a.getAttribute("data-alb-srcset") || "",
                     title: a.getAttribute("title") || "",
                     // Prístupný "alt" text pre obrázok v lightboxe - nezávislý od
                     // nastavenia show_caption (to ovplyvňuje len VIDITEĽNÝ popisok).
@@ -140,7 +145,25 @@
         function show() {
             imgEl.classList.add("alb-loading");
             imgEl.onload = function() { imgEl.classList.remove("alb-loading"); };
+            // src sa nastavuje VŽDY (aj keď je aj srcset) - slúži ako záloha
+            // pre prehliadače bez podpory srcset a je to hodnota, ktorú by
+            // dostal aj používateľ so zakázaným JS (href na <a>). Keď je
+            // srcset prítomný, moderné prehliadače podľa neho aj tak
+            // prepíšu skutočne zobrazenú verziu obrázka.
             imgEl.src = items[current].src;
+            if (items[current].srcset) {
+                imgEl.srcset = items[current].srcset;
+                // 100vw je zjednodušenie (na desktope je obrázok reálne cez
+                // CSS obmedzený max-width:88vw, nie presne 100vw) - v praxi
+                // to znamená, že prehliadač si v hraničných prípadoch môže
+                // vybrať mierne väčšieho kandidáta, než je nutné. To je
+                // prijateľný, bežne používaný kompromis oproti presnému
+                // ladeniu sizes na každý CSS breakpoint.
+                imgEl.sizes = "100vw";
+            } else {
+                imgEl.removeAttribute("srcset");
+                imgEl.removeAttribute("sizes");
+            }
             imgEl.alt = items[current].alt;
 
             var hasCaption = items[current].title !== "";
@@ -180,7 +203,17 @@
                 (current - 1 + items.length) % items.length
             ].forEach(function(idx) {
                 var preloadImg = new Image();
-                preloadImg.src = items[idx].src;
+                // Rovnaký srcset/sizes ako v show() - inak by preload vždy
+                // stiahol najväčšieho kandidáta (fallback src), aj keď by
+                // samotné zobrazenie cez srcset vybralo menšiu, pre viewport
+                // vhodnejšiu verziu. Bez tohto by preload zbytočne
+                // zdvojnásobil práve ten prenos dát, ktorý má srcset riešiť.
+                if (items[idx].srcset) {
+                    preloadImg.sizes = "100vw";
+                    preloadImg.srcset = items[idx].srcset;
+                } else {
+                    preloadImg.src = items[idx].src;
+                }
             });
         }
 
@@ -327,9 +360,23 @@
             if (dataFull) return dataFull;
 
             var dataSrc = img.getAttribute("data-src");
+            var srcset = getCombinedSrcset(img);
+
+            // Rovnaké nastavenie ako na PHP strane (ALB_CONFIG.preferSrcset) -
+            // data-src je v praxi nejednoznačný, niektoré lazy-load knižnice
+            // ho používajú ako plnohodnotný obrázok, iné len ako malý
+            // placeholder popri plnohodnotnom responzívnom srcset.
+            if (ALB_CONFIG.preferSrcset) {
+                if (srcset) {
+                    var fromSrcsetPreferred = parseLargestFromSrcset(srcset);
+                    if (fromSrcsetPreferred) return fromSrcsetPreferred;
+                }
+                if (dataSrc) return dataSrc;
+                return img.getAttribute("src") || "";
+            }
+
             if (dataSrc) return dataSrc;
 
-            var srcset = getCombinedSrcset(img);
             if (srcset) {
                 var fromSrcset = parseLargestFromSrcset(srcset);
                 if (fromSrcset) return fromSrcset;
@@ -475,6 +522,15 @@
             link.setAttribute("href", srcVal);
             link.setAttribute("class", ALB_CONFIG.linkClass ? "alb-link " + ALB_CONFIG.linkClass : "alb-link");
             link.setAttribute("data-alb-group", scopedGalleryGroup(img));
+            // Rovnaká logika ako na PHP strane: ak nešlo o explicitný "chcem
+            // originál" override (data-full/data-highres), pošli aj celý
+            // srcset - JS lightbox nech si sám necha prehliadač vybrať
+            // vhodnú veľkosť namiesto natvrdo najväčšieho kandidáta.
+            var hasExplicitOverride = !!(img.getAttribute("data-full") || img.getAttribute("data-highres"));
+            var combinedSrcsetForLink = getCombinedSrcset(img);
+            if (!hasExplicitOverride && combinedSrcsetForLink) {
+                link.setAttribute("data-alb-srcset", combinedSrcsetForLink);
+            }
             if (title) link.setAttribute("title", title);
             if (rawAlt) link.setAttribute("data-alb-alt", rawAlt);
             img.setAttribute("data-alb-done", "1");

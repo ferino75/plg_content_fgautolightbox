@@ -2,7 +2,7 @@
 <extension type="plugin" group="content" method="upgrade">
     <name>PLG_CONTENT_FGAUTOLIGHTBOX</name>
     <author>FG</author>
-    <version>2.1.8</version>
+    <version>2.2.0</version>
     <description>PLG_CONTENT_FGAUTOLIGHTBOX_XML_DESCRIPTION</description>
     <scriptfile>script.php</scriptfile>
     <namespace path="src">FG\Plugin\Content\Fgautolightbox</namespace>
@@ -94,6 +94,15 @@
                     label="PLG_CONTENT_FGAUTOLIGHTBOX_FIELD_ALLOWED_EXTENSIONS_LABEL"
                     description="PLG_CONTENT_FGAUTOLIGHTBOX_FIELD_ALLOWED_EXTENSIONS_DESC"
                 />
+                <field
+                    name="prefer_srcset"
+                    type="list"
+                    default="0"
+                    label="PLG_CONTENT_FGAUTOLIGHTBOX_FIELD_PREFER_SRCSET_LABEL"
+                    description="PLG_CONTENT_FGAUTOLIGHTBOX_FIELD_PREFER_SRCSET_DESC">
+                    <option value="0">PLG_CONTENT_FGAUTOLIGHTBOX_FIELD_PREFER_SRCSET_OPT_NO</option>
+                    <option value="1">PLG_CONTENT_FGAUTOLIGHTBOX_FIELD_PREFER_SRCSET_OPT_YES</option>
+                </field>
                 <field
                     name="show_navigation"
                     type="list"
