@@ -93,7 +93,53 @@
         var prevBtn = document.getElementById("alb-prev");
         var nextBtn = document.getElementById("alb-next");
         var lastFocusedEl = null;
+        var scrollLockY = 0;
         var previousBodyOverflow = "";
+        var previousBodyPosition = "";
+        var previousBodyTop = "";
+        var previousBodyWidth = "";
+        var previousHtmlOverflow = "";
+
+        // Samotné document.body.style.overflow = "hidden" na iOS Safari
+        // často nezabráni scrollovaniu pozadia ("podtečenie" stránky pod
+        // lightboxom) - iOS má vlastný viewport scrolling model, ktorý toto
+        // pravidlo bežne ignoruje. Overený spôsob je namiesto toho zamknúť
+        // aj <html>, a <body> dočasne prepnúť na position:fixed s top
+        // posunutým o aktuálnu scroll pozíciu - po zatvorení sa všetko
+        // vráti do pôvodného stavu vrátane presnej scroll pozície.
+        function lockBodyScroll() {
+            scrollLockY = window.scrollY || window.pageYOffset || 0;
+
+            // Ulož pôvodné hodnoty namiesto natvrdo nastaveného "" pri
+            // odomknutí - šablóna alebo iný plugin mohli mať vlastné CSS
+            // pravidlá na týchto vlastnostiach, ktoré by sa inak potichu
+            // zmazali (rovnaký princíp ako pri pôvodnom overflow-only
+            // riešení).
+            previousBodyOverflow = document.body.style.overflow;
+            previousBodyPosition = document.body.style.position;
+            previousBodyTop = document.body.style.top;
+            previousBodyWidth = document.body.style.width;
+            previousHtmlOverflow = document.documentElement.style.overflow;
+
+            document.documentElement.style.overflow = "hidden";
+            document.body.style.overflow = "hidden";
+            document.body.style.position = "fixed";
+            document.body.style.top = "-" + scrollLockY + "px";
+            document.body.style.width = "100%";
+        }
+
+        function unlockBodyScroll() {
+            document.documentElement.style.overflow = previousHtmlOverflow;
+            document.body.style.overflow = previousBodyOverflow;
+            document.body.style.position = previousBodyPosition;
+            document.body.style.top = previousBodyTop;
+            document.body.style.width = previousBodyWidth;
+            // position:fixed odstránilo stránku zo scroll toku, takže
+            // prehliadač si scroll pozíciu sám nepamätá - treba ju vrátiť
+            // ručne na presne tú istú hodnotu, na akej bol návštevník pred
+            // otvorením lightboxu.
+            window.scrollTo(0, scrollLockY);
+        }
 
         function open(clickedEl) {
             // Zoskup iba obrázky so ZHODNÝM "data-alb-group" atribútom ako
@@ -125,12 +171,7 @@
             lastFocusedEl = document.activeElement;
             show();
             ovEl.classList.add("alb-open");
-            // Ulož pôvodnú hodnotu namiesto natvrdo nastaveného "" pri zatvorení -
-            // šablóna alebo iný plugin mohli mať vlastné overflow nastavenie
-            // (napr. "auto", alebo aj "hidden" z úplne iného dôvodu), ktoré by
-            // sa inak po zatvorení lightboxu potichu zmazalo.
-            previousBodyOverflow = document.body.style.overflow;
-            document.body.style.overflow = "hidden";
+            lockBodyScroll();
             setTimeout(function() {
                 ovEl.classList.add("alb-visible");
                 closeBtn.focus();
@@ -139,7 +180,7 @@
 
         function close() {
             ovEl.classList.remove("alb-visible");
-            document.body.style.overflow = previousBodyOverflow;
+            unlockBodyScroll();
             setTimeout(function() { ovEl.classList.remove("alb-open"); imgEl.src = ""; }, 320);
             if (lastFocusedEl && typeof lastFocusedEl.focus === "function") {
                 lastFocusedEl.focus();

@@ -4,6 +4,38 @@ This changelog covers the **native Joomla 6 build** only (this `joomla6/`
 folder). For the classic Joomla 3.10 build's history, see
 [`../CHANGELOG.md`](../CHANGELOG.md) in the repository root.
 
+## 2.2.2
+Response to a Grok AI code review (P1, real bug on iOS Safari):
+
+- **`document.body.style.overflow = "hidden"` alone is well known to not
+  reliably prevent background scrolling on iOS Safari** - iOS has its
+  own viewport scrolling model that often ignores this rule entirely,
+  letting the page "bleed through" underneath the open lightbox.
+- Replaced with the standard, widely-used technique: also lock
+  `<html>`'s overflow, capture the current scroll position
+  (`window.scrollY`), and temporarily switch `<body>` to
+  `position: fixed` with `top` offset by that scroll position (plus
+  `width: 100%` to prevent the fixed body from collapsing to content
+  width). On close, all of this is reverted and the scroll position is
+  restored exactly via `window.scrollTo()` - `position: fixed` removes
+  the page from the normal scroll flow, so the browser doesn't
+  remember the scroll position on its own; it has to be restored
+  manually.
+- Extends the "restore the previous value, don't clobber it" principle
+  from 2.1.5 (originally just `body.overflow`) to all five properties
+  now touched (`html.overflow`, `body.overflow`, `body.position`,
+  `body.top`, `body.width`) - a template or another plugin with its own
+  values on any of these is still respected exactly as before.
+- Verified with automated tests: the full lock/unlock cycle sets and
+  restores all five properties correctly, the captured scroll position
+  is applied as the `body.top` offset while open and restored via
+  `scrollTo()` on close, and - explicitly reproducing 2.1.5's original
+  scenario at larger scope - pre-existing template values on multiple
+  properties simultaneously (not just `overflow`) are confirmed
+  preserved exactly, not reset to empty. Full regression across all
+  previously available tests (PHP and JS combined) confirms no other
+  impact.
+
 ## 2.2.1
 Response to a Grok AI code review (P1, real bugs):
 
