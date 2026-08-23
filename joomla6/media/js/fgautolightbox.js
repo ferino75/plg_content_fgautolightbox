@@ -141,6 +141,32 @@
             window.scrollTo(0, scrollLockY);
         }
 
+        // Doplnková ochrana k Tab-cyklovaniu nižšie: to samo osebe rieši len
+        // klávesnicovú navigáciu (a len ak sa focus už nachádza medzi troma
+        // tlačidlami). Čítačka obrazovky v "browse móde" (šípkami prechádza
+        // celý DOM nezávisle od Tab poradia) alebo klik myšou na obsah
+        // pozadia by ju úplne obišli. "inert" na priamych potomkoch <body>
+        // (okrem nášho vlastného overlay) robí pozadie skutočne nedosiahnuteľné
+        // - žiadnym spôsobom interakcie, nielen Tabom.
+        var inertedBodyChildren = [];
+        function setBackgroundInert(makeInert) {
+            if (makeInert) {
+                inertedBodyChildren = [];
+                Array.prototype.forEach.call(document.body.children, function(child) {
+                    if (child === ovEl) return;
+                    if (!child.hasAttribute("inert")) {
+                        child.setAttribute("inert", "");
+                        inertedBodyChildren.push(child);
+                    }
+                });
+            } else {
+                inertedBodyChildren.forEach(function(child) {
+                    child.removeAttribute("inert");
+                });
+                inertedBodyChildren = [];
+            }
+        }
+
         function open(clickedEl) {
             // Zoskup iba obrázky so ZHODNÝM "data-alb-group" atribútom ako
             // kliknutý odkaz (napr. len obrázky z toho istého článku, nie z
@@ -172,6 +198,7 @@
             show();
             ovEl.classList.add("alb-open");
             lockBodyScroll();
+            setBackgroundInert(true);
             setTimeout(function() {
                 ovEl.classList.add("alb-visible");
                 closeBtn.focus();
@@ -181,6 +208,7 @@
         function close() {
             ovEl.classList.remove("alb-visible");
             unlockBodyScroll();
+            setBackgroundInert(false);
             setTimeout(function() { ovEl.classList.remove("alb-open"); imgEl.src = ""; }, 320);
             if (lastFocusedEl && typeof lastFocusedEl.focus === "function") {
                 lastFocusedEl.focus();

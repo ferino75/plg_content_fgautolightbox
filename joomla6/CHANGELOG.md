@@ -4,6 +4,44 @@ This changelog covers the **native Joomla 6 build** only (this `joomla6/`
 folder). For the classic Joomla 3.10 build's history, see
 [`../CHANGELOG.md`](../CHANGELOG.md) in the repository root.
 
+## 2.3.8
+Item 7 from a broader Grok AI review of smaller improvements ("Menšie,
+ale oplatí sa to") - implemented carefully and tested thoroughly, since
+it touches every direct child of `<body>` on the page, not just the
+plugin's own markup.
+
+- **The existing focus trap only handled keyboard Tab cycling, and only
+  when focus was already inside the three buttons.** If focus ever
+  ended up outside that set - most importantly, a screen reader user
+  in "browse mode" (navigating the accessibility tree directly with
+  arrow keys, independent of Tab order and DOM visual layering) - it
+  could reach and activate background page content while the lightbox
+  was technically still open.
+- **Added `inert` on every direct `<body>` child except the overlay
+  itself**, applied when the overlay opens and removed when it closes.
+  Unlike Tab-cycling, `inert` makes background content genuinely
+  unreachable through *any* interaction method - not just keyboard
+  navigation - which is exactly the gap the existing trap had.
+- The existing Tab-cycling trap is kept as-is, working alongside
+  `inert` rather than being replaced by it - `inert` alone doesn't
+  define a specific Tab order among the three buttons themselves, so
+  the explicit cycling is still useful for well-defined keyboard
+  behavior.
+- Only elements that didn't already have `inert` are touched, and only
+  those specific elements get it removed again on close - if some
+  other script or plugin had already made a `<body>` child `inert` for
+  its own reasons, this plugin doesn't interfere with it either way.
+- **Assumes native browser support for the `inert` attribute** (well
+  supported in all current major browsers) - no polyfill was added.
+- Verified with automated tests: every direct `<body>` child except the
+  overlay gets `inert` on open and has it correctly removed on close;
+  an element that already had `inert` before the lightbox opened
+  (simulating another script's own use of it) is left untouched in
+  both directions; the overlay itself never receives `inert`; and the
+  pre-existing Tab-cycling trap still functions exactly as before
+  alongside the new mechanism. Full regression across the entire JS
+  test suite confirms no other impact.
+
 ## 2.3.7
 Item 8 from a broader Grok AI review of smaller improvements ("Menšie,
 ale oplatí sa to") - real mobile usability bug.
