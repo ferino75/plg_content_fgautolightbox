@@ -4,6 +4,53 @@ This changelog covers the **native Joomla 6 build** only (this `joomla6/`
 folder). For the classic Joomla 3.10 build's history, see
 [`../CHANGELOG.md`](../CHANGELOG.md) in the repository root.
 
+## 2.3.4
+First three items from a broader Grok AI review of smaller
+improvements ("Menšie, ale oplatí sa to").
+
+**1. Manifest metadata for JED compliance**
+- Added `authorEmail`, `authorUrl`, `copyright`, `license`, and
+  `creationDate` to the manifest - previously missing entirely (the
+  classic build never had them either). Joomla Extensions Directory
+  listings expect these, and JED requires GPL licensing to be
+  explicitly stated.
+- A `LICENSE.txt` (standard GPL-2.0 text) was added *inside* the
+  `joomla6/` folder itself and registered in the manifest's `<files>`
+  section, so it actually ships with the installed plugin - not just
+  sitting in the repository, which an end user who only downloads the
+  release ZIP would never see otherwise.
+
+**2. Cache-busting moved from `filemtime()` to the plugin version**
+- On load-balanced hosting (multiple servers behind one site), the
+  same static file can have a different `mtime` on each server -
+  slightly different deployment timing, filesystem sync artifacts -
+  which meant the CSS/JS cache-busting query parameter could differ
+  between requests hitting different servers. Replaced with a fixed
+  `VERSION` class constant instead, identical everywhere regardless of
+  server filesystem state. This constant must be kept in sync with the
+  manifest's `<version>` on every release going forward - now part of
+  the release checklist.
+- Verified with automated tests: the cache-bust value in both the CSS
+  and JS URLs matches the plugin version exactly, and both use the
+  *same* value (previously two independent `filemtime()` calls could
+  theoretically produce different values for CSS vs. JS if one file
+  was touched slightly after the other during deployment).
+
+**3. `prefers-reduced-motion` support**
+- Visitors with reduced-motion enabled (an OS/browser accessibility
+  setting for motion sensitivity) previously got the full animated
+  fade-in and scale-up transition on every lightbox open/close, with
+  no way to opt out.
+- Added `@media (prefers-reduced-motion: reduce)` disabling all
+  `transition` properties on the overlay, wrap, image, caption, and
+  the three buttons, and fixing the wrap's scale transform at its
+  final value - functionally nothing changes (the same show/hide
+  states still apply), only the animated interpolation is skipped.
+  Verified as syntactically valid CSS via a real parser (`tinycss2`,
+  zero errors); actual browser-level `prefers-reduced-motion`
+  evaluation isn't testable outside a real browser from this
+  environment.
+
 ## 2.3.3
 Response to a Grok AI code review (P1, real security hardening).
 

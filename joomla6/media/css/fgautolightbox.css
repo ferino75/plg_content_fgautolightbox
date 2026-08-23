@@ -130,3 +130,24 @@
 
 /* Pevná funkčná trieda - vždy pridaná pluginom, nezávislá od "link_class" nastavenia */
 a.alb-link { cursor:zoom-in; }
+
+/* Návštevníci s prefers-reduced-motion (nastavenie OS/prehliadača pre
+   citlivosť na pohyb) nedostanú animovaný fade/scale prechod - stavy
+   (viditeľné/skryté, otvorené/zatvorené) sa aplikujú OKAMŽITE, len bez
+   animovanej interpolácie. Funkčne sa nič nemení, len sa vynechá samotný
+   pohyb/blikanie priehľadnosti. */
+@media (prefers-reduced-motion: reduce) {
+    #alb-overlay,
+    #alb-wrap,
+    #alb-img,
+    #alb-caption,
+    #alb-close,
+    #alb-prev,
+    #alb-next,
+    #alb-counter {
+        transition:none !important;
+    }
+    #alb-wrap {
+        transform:translate(-50%,-50%) scale(1) !important;
+    }
+}

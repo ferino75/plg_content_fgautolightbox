@@ -2,13 +2,19 @@
 <extension type="plugin" group="content" method="upgrade">
     <name>PLG_CONTENT_FGAUTOLIGHTBOX</name>
     <author>FG</author>
-    <version>2.3.3</version>
+    <authorEmail>ferino@atlas.sk</authorEmail>
+    <authorUrl>https://github.com/ferino75</authorUrl>
+    <copyright>Copyright (C) 2026 FG. All rights reserved.</copyright>
+    <license>GNU General Public License version 2 or later; see LICENSE.txt</license>
+    <creationDate>2026-08-23</creationDate>
+    <version>2.3.4</version>
     <description>PLG_CONTENT_FGAUTOLIGHTBOX_XML_DESCRIPTION</description>
     <scriptfile>script.php</scriptfile>
     <namespace path="src">FG\Plugin\Content\Fgautolightbox</namespace>
     <files>
         <folder plugin="fgautolightbox">services</folder>
         <folder>src</folder>
+        <file>LICENSE.txt</file>
     </files>
     <media destination="plg_content_fgautolightbox" folder="media">
         <folder>css</folder>

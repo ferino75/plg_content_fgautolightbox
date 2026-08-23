@@ -29,6 +29,14 @@ use Joomla\Event\SubscriberInterface;
  */
 final class Fgautolightbox extends CMSPlugin implements SubscriberInterface
 {
+    /**
+     * Musí sa ručne udržiavať synchronizovaná s <version> v
+     * fgautolightbox.xml pri každom vydaní - používa sa ako cache-bust
+     * hodnota pre statické CSS/JS assety namiesto filemtime() (viď
+     * getAssetCacheBuster() nižšie).
+     */
+    private const string VERSION = '2.3.4';
+
     private static bool $assetsLoaded = false;
 
     private readonly SrcSetResolver $srcSetResolver;
@@ -191,6 +199,7 @@ final class Fgautolightbox extends CMSPlugin implements SubscriberInterface
 
         $wa = $this->getApplication()->getDocument()->getWebAssetManager();
         $mediaBase = $this->getMediaBaseUri();
+        $cacheBuster = $this->getAssetCacheBuster();
 
         // Priama registrácia cez registerAndUseStyle()/registerAndUseScript()
         // namiesto addRegistryFile('...joomla.asset.json') + useStyle()/
@@ -202,11 +211,11 @@ final class Fgautolightbox extends CMSPlugin implements SubscriberInterface
         // priamo volateľný spôsob pre jednorazovú registráciu vlastného assetu.
         $wa->registerAndUseStyle(
             'plg_content_fgautolightbox.style',
-            $mediaBase . '/css/fgautolightbox.css?v=' . $this->getAssetCacheBuster('css/fgautolightbox.css'),
+            $mediaBase . '/css/fgautolightbox.css?v=' . $cacheBuster,
         );
         $wa->registerAndUseScript(
             'plg_content_fgautolightbox.script',
-            $mediaBase . '/js/fgautolightbox.js?v=' . $this->getAssetCacheBuster('js/fgautolightbox.js'),
+            $mediaBase . '/js/fgautolightbox.js?v=' . $cacheBuster,
             [],
             ['defer' => true],
         );
@@ -251,12 +260,20 @@ final class Fgautolightbox extends CMSPlugin implements SubscriberInterface
      * Cache-busting hodnota pre statický CSS/JS súbor, založená na čase jeho
      * poslednej zmeny - rovnaký, osvedčený mechanizmus ako v classic builde.
      */
-    private function getAssetCacheBuster(string $relativePath): string
+    /**
+     * Cache-bust hodnota pre statický CSS/JS súbor. Predtým filemtime() -
+     * ale na load-balanced hostingu (viacero serverov za jedným webom) môže
+     * mať ten istý súbor iný mtime na každom serveri (napr. mierne odlišný
+     * čas nasadenia, artefakty synchronizácie súborového systému), čo môže
+     * viesť k nekonzistentným URL medzi requestmi obsluhovanými rôznymi
+     * servermi - a teda k zbytočnému znovunačítaniu z pohľadu prehliadača/
+     * CDN cache, alebo v horšom prípade k nekonzistentnému stavu medzi
+     * návštevníkmi. Verzia pluginu je naproti tomu identická všade,
+     * nezávisle od súborového systému konkrétneho servera.
+     */
+    private function getAssetCacheBuster(): string
     {
-        $fullPath = JPATH_ROOT . '/media/plg_content_fgautolightbox/' . ltrim($relativePath, '/');
-        $mtime = @filemtime($fullPath);
-
-        return $mtime !== false ? (string) $mtime : '1';
+        return self::VERSION;
     }
 
     /**
