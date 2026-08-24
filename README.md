@@ -2,7 +2,7 @@
   <img src="assets/logo.png" alt="FG AutoLightbox" width="128">
 </p>
 
-# FG AutoLightbox plugin for Joomla
+<h1 align="center">FG AutoLightbox plugin for Joomla</h1>
 
 <p align="center">
   <img src="https://img.shields.io/github/v/release/ferino75/plg_content_fgautolightbox?color=FF6B4A&label=release" alt="Latest release">
