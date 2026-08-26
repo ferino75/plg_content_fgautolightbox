@@ -9,7 +9,7 @@
   <img src="https://img.shields.io/badge/Joomla-3.10%20%7C%204%20%7C%205%20%7C%206-5091CD.svg" alt="Joomla">
   <img src="https://img.shields.io/badge/PHP-7.4%2B-777BB4.svg" alt="PHP">
   <img src="https://img.shields.io/badge/license-GPL--2.0-green.svg" alt="License">
-  <img src="https://img.shields.io/github/downloads/ferino75/plg_content_fgautolightbox/total?color=FF6B4A" alt="Downloads">
+  <img src="https://img.shields.io/github/downloads/ferino75/plg_content_fgautolightbox/total" alt="Downloads">
 </p>
 
 A Joomla content plugin that automatically turns every image in your
