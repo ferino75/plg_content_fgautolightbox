@@ -29,7 +29,7 @@ This repository contains **two separate builds**:
 | **Classic** | repository root (this README) | 3.10 – 6.x | 7.4+ | Frozen — feature-complete, still works, but no longer under active development |
 | **Native** | [`joomla6/`](joomla6/) | 6.0+ only | 8.3+ | Actively developed — PSR-4, constructor DI, `WebAssetManager`, PHP 8.3+ syntax |
 
-**If you're on Joomla 3.10** (or any J3.x), use the classic build — it's
+**If you're on Joomla 3.10** (or any J3.x), use the classic build **v1.3.2** — it's
 the only one that works there, and it isn't going anywhere.
 
 **If you're on Joomla 6**, either build works today, but new features and
