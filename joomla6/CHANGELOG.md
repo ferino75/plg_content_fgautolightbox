@@ -4,6 +4,26 @@ This changelog covers the **native Joomla 6 build** only (this `joomla6/`
 folder). For the classic Joomla 3.10 build's history, see
 [`../CHANGELOG.md`](../CHANGELOG.md) in the repository root.
 
+## 2.3.9
+JED Checker flagged all 9 PHP source files as missing a GPL license
+notice (a JED submission requirement, separate from the manifest-level
+`<license>` element added in 2.3.4).
+
+- Added a standard Joomla-convention license header comment (package,
+  subpackage, copyright, license) to the top of every PHP file:
+  `script.php`, `services/provider.php`,
+  `src/Extension/Fgautolightbox.php`, and all six files under
+  `src/Support/`.
+- Verified with `php -l` on all 9 files (a fresh PHP 8.3 install was
+  needed in this environment first, since the sandbox this work was
+  done in didn't have PHP installed at all - a different sandbox
+  instance than earlier work in this project), plus a functional smoke
+  test confirming every affected class still autoloads and behaves
+  identically (`SrcSetResolver`, `ContentScopeResolver`,
+  `ExtensionFilter` including its scheme check, `LinkAttributes`, and
+  `HtmlProcessor`'s full image-wrapping pipeline). No functional code
+  changed - only the new header comment was added.
+
 ## 2.3.8
 Item 7 from a broader Grok AI review of smaller improvements ("Menšie,
 ale oplatí sa to") - implemented carefully and tested thoroughly, since

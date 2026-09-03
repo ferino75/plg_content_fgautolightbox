@@ -1,5 +1,12 @@
 <?php
 
+/**
+ * @package     Joomla.Plugin
+ * @subpackage  Content.fgautolightbox
+ * @copyright   Copyright (C) 2026 FG. All rights reserved.
+ * @license     GNU General Public License version 2 or later; see LICENSE.txt
+ */
+
 declare(strict_types=1);
 
 namespace FG\Plugin\Content\Fgautolightbox\Extension;
@@ -35,7 +42,7 @@ final class Fgautolightbox extends CMSPlugin implements SubscriberInterface
      * hodnota pre statické CSS/JS assety namiesto filemtime() (viď
      * getAssetCacheBuster() nižšie).
      */
-    private const string VERSION = '2.3.8';
+    private const string VERSION = '2.3.9';
 
     private static bool $assetsLoaded = false;
 

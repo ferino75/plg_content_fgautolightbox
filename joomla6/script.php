@@ -1,5 +1,12 @@
 <?php
 
+/**
+ * @package     Joomla.Plugin
+ * @subpackage  Content.fgautolightbox
+ * @copyright   Copyright (C) 2026 FG. All rights reserved.
+ * @license     GNU General Public License version 2 or later; see LICENSE.txt
+ */
+
 \defined('_JEXEC') or die;
 
 use Joomla\CMS\Factory;
